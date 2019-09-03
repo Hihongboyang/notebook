@@ -156,6 +156,48 @@ bingo.pick()的快捷方式是bingo()
 
 
 
+#### 定位参数和仅限关键字参数
+
+````python
+def tag(name, *content, cls=None, **sttrs)；
+    """生成一个或者多个HTML标签"""
+	if cls is not None:
+        attrs["class"] = cls
+    if attrs:
+        attr_str = ''.join('%s=%s'%(attr，value) 
+                               for attr, value in sorted(attrs.items()))
+    else:
+        attr_str = ''
+    if content:
+        return '\n'.join('<%s%s>%s<%s>'%(name,attr_str,c,name) for c in content)
+    else:
+         return '<%s%s />' % (name,sttr_str)
+````
+
+输出效果
+
+```html
+tag('br') >>>> '<br />' 这个相当于，cls=None content=None sttrs=None 直接执行最后一句
+
+ tag('p', 'hello') >>>>  '<p>hello</p>'  此时相当于name 和content有值。执行倒数第二句，一个生成器。不断换c的值
+ 
+ tag('p', 'hello', 'world') >>>>  <p>hello</p>       <p>world</p>  如上，此时就生成了两个
+ 
+ tag('p', 'hello', id=33)  >>>> <p id="33">hello</p>   id=33 就用到了关键字参数。解包之后使用
+ 
+ tag('p', 'hello', 'world', cls='sidebar') >>>>  <p class="sidebar">hello</p> 
+                                                 <p class="sidebar">world</p> 
+                                                 
+ tag(content='testing', name="img")   >>>>   <img content="testing" />
+ 
+ my_tag = {'name': 'img', 'title': 'Sunset Boulevard', 'src': 'sunset.jpg', 'cls': 'framed'} 
+  tag(**my_tag) 
+ <img class="framed" src="sunset.jpg" title="Sunset Boulevard" />
+ 
+```
+
+
+
 
 
 
