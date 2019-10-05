@@ -211,7 +211,7 @@ def f(a,*,b):
 
 但是参数的名称是放在`__code__`属性中的。在code中参数的名称是放在`__code__.co_varnames`中的，但是其中还存放了函数中创建的局部变量。函数参数是`__code__.co_varnames`中前N个数，N的数值是由`__code__.co_argcount`所确定的。
 
-python中有一个模块———inspect，来处理相同功能。
+python中有一个模块———inspect，来处理相同功
 
 
 
@@ -219,13 +219,188 @@ python中有一个模块———inspect，来处理相同功能。
 
 
 
+### 装饰器
+
+装饰器的基本知识
+
+- python如何计算装饰器句法
+- python如何判断变量是不是局部的
+- 闭包存在的原因和工作原理
+- nonlocal能解决什么问题
+
+更近一步
+
+- 如何实现行为良好的装饰器
+- 标准库中有用的装饰器
+- 实现一个参数化的装饰器
+
+-----------------------
+
+1.装饰器的用法
+
+```python
+@decorate
+def target():
+    print("running target()")
+```
+
+上述代码如下写法相同
+
+```python
+def targer():
+   print("running target()")
+
+target = decorate(target)  # 以目标函数为参数，再返回与目标函数同名的函数，但实际上函数名已经绑定到其他地址了。
+```
+
+装饰器的一大特性是：将被装饰的函数换成其他函数。第二个特性是：装饰器**在加载模块时立即执行**。
+
+```python
+registry = []
+def register(func):
+    print("running register(%s)" % func)
+    registry.append(func)
+    return func
+@register
+def f1():
+    print("running f1()")
+    
+@register
+def f2():
+    print("running f2()")
+    
+def f3():
+    print("running f3()")
+    
+def main():
+    print("running main()")
+    print("register ->", register)
+    f1()
+    f2()
+    f3()
+if __name__ == ""
+```
+
+在真正代码中装饰器有几个特性：
+
+- 装饰器函数与被装饰函数通常是分开定义的。装饰器通常在一个模块中定义，然后应用到其他模块中的函数上。
+- 装饰器返回的函数，通常与传入的函数不是同意个函数。大多数情况下，装饰器会在内部定义一个函数，然后将其返回。
+
+2.变量作用域规则
+
+python不要求声明变量，但是假定在函数定义体中赋值的变量是局部变量。
+
+3.闭包
+
+闭包是指延伸了作用域的函数，其中包含函数定义体中  引用了、但是不在定义体中定义的非全局变量。函数是不是匿名没有关系，关键是他能够访问定义体之外定义的非全局变量。
+
+```python
+def make_averager()
+  # --------闭包---------------
+	series = []  
+    def averager(new_value)
+    	series.append(new_value)  # 自由变量series
+        total = sum(series)
+        return total/len(series)
+  # --------闭包----------------
+```
+
+4.nonlocal 的变量作用域
+
+```python
+def make_averager():
+    count = 0
+    total = 0
+    def averager(new_value):
+        count += 1
+        total += new_value
+        return total / count
+```
+
+上面的函数是对之前函数的改进，但是，在运行过程中会出错。因为对 count+=1 会使他变为局部变量，total也相同。因此python中引入了nonlocal关键字，来处理局部和全局变量之间的那层变量。
+
+- nonlocal的作用是把变量标记为自由变量，即使在函数中为变量赋予新值，也不会改变自由变量
 
 
+更新如下
 
+```python
+def make_averager():
+    count = 0
+    total = 0
+    def averager(new_value):
+        nonlocal count, total
+        count += 1
+        total += new_value
+        return total / count
+```
 
+5.一个简单的例子
 
+```python
+# clockdeco.py
+import time
 
+def clock(func):
+    def clocked(*args):
+        t0 = time.perf_counter()
+        result = func(*args)
+        elapsed = time.perf_counter() - t0
+        name = func.__name__
+        arg_str = ", ".join(repr(arg) for arg in args)
+        print("[%0.8fs] %s(%s) -> %r" % (elapsed, name, arg_str, result))
+        return result
+    return clocked
+```
 
+将一个函数的运行的时间，传入的参数和调用的结果显示出来。
+
+```python
+import time
+from clockdeco import clock
+@clock
+def snooze(seconds):
+    time.sleep(seconds)
+    
+@clock
+def factorial(n):
+    return 1 if n < 2 else n*factorial(n-1)
+
+if __name__ == "__main__":
+    print("*" * 40, "calling snooze(.123)")
+    snooze(.123)
+    print("*" * 40, "calling factorial(6)")
+    print("6! =", factorial(6))
+```
+
+这是装饰器比较经典的作用，把装饰的函数替换成新的函数，二者接受相同的参数，而且返回被装饰的函数本该返回的值，同时还会做一些额外的操作。
+
+上面clock装饰器，掩盖了`__name__`  和 `__doc__` 属性。而functool.wraps 装饰器能把相关属性从func复制到clocked中，而且还能正确处理关键字参数，这是一种加强的操作。
+
+```python
+import time
+import functools
+
+def clock(func):
+    @functools.wraps(func)
+    def clocked(*args,**kwargs):
+        t0 = time.time()
+        result = func(*args, **kwargs)
+        elapsed = time.time() - t0
+        name = func.__name__
+        arg_lst = []
+        if args:
+            arg_lst.append(", ".join(repr(arg) for arg in args))
+        if kwargs:
+            pairs = ["%s=%r" % (k, w) for k, w in sorted(kwargs.items())]
+            arg_lst.append(", ".join(arg_lst))
+        arg_str = ", ".join(arg_lst)
+        print("[%0.8fs] %s(%s) -> %r" % (elapsed, name, arg_str, result))
+        return result
+    return clocked
+```
+
+6.标准库中的装饰器
 
 
 
