@@ -402,11 +402,156 @@ def clock(func):
 
 6.标准库中的装饰器
 
+**functools.lru_cache**
+
+他实现了备忘功能，**他把耗时的函数的结果保存起来**，避免传入相同的参数时重复计算。LRU是"Least Recently Used"的缩写，表明缓存不会无限制增长，一段时间不用的缓存条目会被扔掉。
+
+生成第n个斐波那契数这种慢速递归函数特别适合使用lru_cache。
+
+```python
+import functools
+from clockdeco import clock
+
+@functools.lru_cache()  # 必须有一对括号
+@clock
+def fibonacci(n):
+    if n < 2:
+        return n
+    return fibonacci(n-2) + fibonacci(n-1)
+
+if __name__ == "__main__":
+    print(fibonacci(6))
+```
+
+lru_cache可以使用两个参数。
+
+```python
+functools.lru_cache(maxsize=128, typed=False)
+```
+
+maxsize参数指定存储多少个调用的结果（最好是2的幂次方）。缓存满了之后，旧的结果会被抛弃。
+
+typed参数如果设为True，会把不同参数类型得到的结果分开保存，即把通常认为相等的浮点数和整数参数（如1和1.0）区分开。
+
+因为lru_cache使用字典存储结果，而且键根据调用时传入的定位参数和关键字参数创建，所以被lru_cache装饰的函数，他的所有参数都必须是可散列的。
 
 
 
+**functools.singledispatch**
+
+单分派泛函数
+
+类似于重载函数，但python本身并不存在方法重载。
+
+```python
+import html
+def htmlize(obj):
+    content = html.escape(repr(obj))
+    return "<pre>{}</pre>".format(content)
+```
+
+在Python中，一种常见的做法是把htmlize变成一个分派函数，使用一串if/elif/elif，调用专门的函数，如htmlize_str、htmlize_int等。这样不便于模块的用户扩展，还很笨。时间一长，分派函数htmlize会变得很大，而且他与各个专门函数之间的耦合也很紧密。
+
+```python
+from functools import singledispatch
+from collections import abc
+import numbers
+import html
+
+@singledispatch  # singledispatch标记处理object类型的基函数
+def htmlize(obj):
+    content = html.escape(repr(obj))
+    return "<pre>{}</pre>".format(content)
+
+@htmlize.register(str)  # 各个专门函数使用<<base_function>>.register(<<type>>)装饰
+def _(text):
+    content = html.escape(text).replace("\n", "<br>\n")
+    return "<p>{0}</p>".format(n)
+
+@htmlize.register(numbers.Integral)  # numbers.Integral是int的虚拟超类
+def _(n):
+    return "<pre>{0} (0x{0:x})</pre>".format(n)
+
+@htmlize.register(tuple)  # 可以叠放多个register装饰器，让同一个函数支持不同类型
+@htmlize.register(abc.MutableSequence)
+def _(seq):
+    inner = "</li>\n<li>".join(htmlize(item) for item in seq)
+    return "<ul>\n<li>" + inner + "</li>\n<ul>"
+
+```
+
+注册的专门函数应该处理抽象基类（如numbers.Integral和abc.MutableSequence），不要处理具体实现(int和list)。
+
+singledispatch机制的一个显著的特征是，你可以在系统的任何地方和任何模块中注册专门函数。如果后来在新的模块中定义了新的类型，可以轻松地添加一个新的专门函数来处理那个类型。此外，你还可以为不是自己编写的或者不能修改的类添加自定义函数。
+
+7.参数化装饰器
+
+怎么让装饰器接受其他参数？创建一个装饰器工厂函数，把参数传给他，返回一个装饰器，然后再把它应用到要装饰的函数上。
+
+下面的函数不是装饰器，而是装饰器工厂函数。调用他会返回真正的装饰器，这才是应用到目标函数上的装饰器。
+
+```python
+register = set()
+def register(active=True):
+    def decorate(func):
+        print("running register(active=%s)->decorate(%s)" % (active, func))
+    	if active:
+        	register.add(func)
+    	else:
+        	register.discard(func)
+    	return func
+    return decorate
+
+@register(active=False)  # 工厂函数必须作为函数调用，并且传入所需的参数。
+def f1():
+    print("running f1()")
+
+@register()  # 必须作为函数调用
+def f2():
+    print("running f2()")
+
+def f3():
+    print("running f3()")
+
+```
 
 
+
+参数化clock装饰器
+
+添加一个功能，让用户传入一个格式化字符串，控制被装饰函数的输出。
+
+```python
+import time
+DEFAULT_FMT = "[{elapsed:0.8f}s] {name}({args}) -> {result}"
+
+def clock(fmt = DEFAULT_FMT):  # 装饰器工厂函数。。这一层只是为了能够使装饰器有参数
+    def decorate(func):  # 真正的装饰器。。 从func看出，这一层使用要传入要包装的函数的
+        def clocked(*_args):  # 包装被装饰的函数。。而这一层是为了能够使用被包装函数的参数
+            t0 = time.time()
+            _result = func(*_args)
+            elapsed = time.time() - t0
+            name = func.__name__
+            args = ", ".join(repr(arg) for arg in _args)
+            result = repr(_result)
+            print(fmt.format(**locals()))
+            return _result  # 真正被返回的值
+        return clocked
+    return decorate
+if __name__ == "__main__":
+    @clock()
+    def snooze(seconds):
+        time.sleep(seconds)
+    
+    for i in range(3):
+        snooze(.123)
+    
+    @clock("{name}:{elapsed}s")
+    def snooze(seconds):
+        time.sleep(seconds)
+    for i in range(3):
+        snooze(.123)
+```
 
 
 
