@@ -617,7 +617,36 @@ a = copy.deepcopy(b)
 
 
 
+### 函数参数
 
+函数的参数在传递过程中，python传递的都是变量的引用。对于这些引用的修改都会生成新的局部变量，进而屏蔽掉全局变量。但是可以将列表等可变类型进行传递，进而改变参数的值，但是这样做是相当危险的。
+
+```python
+class HauntedBus:
+    def __init__(self,passengers=[]):
+        self.passengers = passengers
+    def pick(self,name):
+        self.passengers.append(name)
+    def drop(self,name):
+        self.passengers.remove(name)
+```
+
+在实例化的时候，如果给定了初始值，那么相当于passengers绑定了一个变量地址，
+
+```python
+bus1 = HauntedBus(["Alice", "Bill"])
+```
+
+此时多个对象之间不会出现问题，
+
+但是如果实例化了几个对象都没有初始化。那么他们的passengers会绑定同一个空列表的地址，
+
+```
+bus2 = HauntedBus()
+bus3 = HauntedBus()
+```
+
+当改变bus2的值的时候，bus3的值也会改变，而这样的错误难以察觉。
 
 
 
