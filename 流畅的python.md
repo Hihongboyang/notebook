@@ -648,6 +648,16 @@ bus3 = HauntedBus()
 
 当改变bus2的值的时候，bus3的值也会改变，而这样的错误难以察觉。
 
+正确的做法应该是
+
+```python
+def __init__(self,passengers=None):
+    if passengers in None:
+        self.passengers = []  # 不直接绑定可变对象
+    else:
+        self.passengers = list(passengers)  # 为参数重新生成变量，防止函数内部的修改影响到外部
+```
+
 
 
 
