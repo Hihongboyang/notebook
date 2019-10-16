@@ -686,7 +686,26 @@ wref()
 
 `weakref.ref`是底层实现，不推荐直接使用。
 
+而`WeakValueDictionary`是可变映射（从名字上可以看出来这是个字典），里面的值是对象的弱引用。当引用的值被垃圾回收后，其中的键会被自动删除。
 
+````python
+class Cheese:
+    def __init__(self, kind):
+        self.kind = kind
+    def __repr__(self):
+        return "Cheese(%r)" %self.kind
+    
+stock = weakref.WeakValueDictionary()
+catalog = [Cheese("Red"), Cheese("Green"), Cheese("Blue"), Cheese("Grey")]
+for cheese in catalog:
+    stock[cheese.kind] = cheese
+del catalog  # stock只剩"Grey"
+del cheese # 全部删除，因为最后的cheese保留了一个Grey
+````
+
+与`WeakValueDictionary`对应的是`WeakKeyDictionary`其中key是弱引用。还有一个`WeakSet`，一个弱引用的集合。如果一个类需要知道他的所有实例，可以使用弱引用保存这些实例，不用Set是因为，这样实例永远不会被释放了，知道程序结束。
+
+弱引用的局限：并不是所有python对象都可以作为弱引用的目标。int和tuple就不行。
 
 
 
