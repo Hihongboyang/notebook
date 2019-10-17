@@ -726,6 +726,42 @@ str()   便于用户理解的方式返回对象的字符串表示形式
 
 同时还有个两个`__bytes__`和`__format__`，他们一个是提供对字符的编码，一个提供格式化的输出形式。
 
+### 举个例子
+
+实现一个向量类的表示
+
+
+
+
+
+
+
+
+
+### 类方法和静态方法
+
+类方法和静态方法通过使用装饰器`@classmthod`和`@staticmethod`实现
+
+```python
+class Demo:
+    @classmethod
+    def klassmeth(*args):  # 类方法
+        return args
+    @staticmethod
+    def statmeth(*args):  # 静态方法
+        return args 
+    
+>>>Demo.klassmeth()
+(<class '__main__.Demo'>,)  # 类方法是绑定在类上的，这从他第一个参数可以看出
+>>>Demo.klassmeth('spam')
+(<class '__main__.Demo'>, 'spam')
+>>>Demo.statmeth()  # 静态方法和不同的函数相同，只是他比较靠近类。
+()
+>>>Demo.statmeth('spam')
+('spam', )
+        
+```
+
 
 
 
