@@ -730,11 +730,154 @@ str()   便于用户理解的方式返回对象的字符串表示形式
 
 实现一个向量类的表示
 
+```python
+"""测试用例
+A two-dimensional vector class
+    >>> v1 = Vector2d(3, 4)
+    >>> print(v1.x, v1.y)
+    3.0 4.0
+    >>> x, y = v1
+    >>> x, y
+    (3.0, 4.0)
+     >>> v1
+     Vector2d(3.0, 4.0)
+     >>> v1_clone = eval(repr(v1))
+     >>> v1 == v1_clone
+     True
+     >>> print(v1)
+     (3.0, 4.0)
+     >>> octets = bytes(v1)
+     >>> octets
+     b'd\\x00\\x00\\x00\\x00\\x00\\x00\\x08@\\x00\\x00\\x00\\x00\\x00\\x00\\x10@'
+     >>> abs(v1)
+     5.0
+     >>> bool(v1), bool(Vector2d(0, 0))
+     (True, False)
 
+Test of  ``.frombytes()`` class method:
+    >>> v1_clone = Vector2d.frombytes(bytes(v1))
+    >>> v1_clone
+    Vector2d(3.0, 4.0)
+    >>> v1 == v1_clone
+    True
 
+Tests of ``format()``with Cartesian coordinates:
+    >>> format(v1)
+    '(3.0, 4.0)'
+    >>> format(v1, '.2f')
+    '(3.00, 4.00)'
+    >>> format(v1, '.3e')
+    '(3.000e+00, 4.000e+00)'
 
+Tests of the ``angle`` method::
+    >>> Vector2d(0, 0).angle()
+    0.0
+    >>> Vector2d(1, 0).angle()
+    0.0
+    >>> epsilon = 10**-8
+    >>> abs(Vector2d(0, 1).angle() - math.pi/2) < epsilon
+    True
+    >>> abs(Vector2d(1, 1).angle() - math.pi/4) < epsilon
+    True
 
+Tests of ``format()`` with polar coordinates:
+    >>> format(Vector2d(1, 1), 'p')  # doctest:+ELLIPSIS
+    '<1.414213..., 0.785398...>'
+    >>> format(Vector2d(1, 1), '.3ep')
+    '<1.414e+00, 7.854e-01>'
+    >>> format(Vector2d(1, 1), '0.5fp')
+    '<1.41421, 0.78540>'
 
+Tests of `x` and `y` read-only properties:
+    >>> v1.x, v1.y
+    (3.0, 4.0)
+    >>> v1.x = 123
+    Traceback (most recent call last):
+    ...
+    AttributeError: can't set attribute
+
+Tests of hashing:
+    >>> v1 = Vector2d(3, 4)
+    >>> v2 = Vector2d(3.1, 4.2)
+    >>> hash(v1), hash(v2)
+    (7, 384307168202284039)
+    >>> len(set([v1, v2]))
+    2
+"""
+from array import array
+import math
+
+class Vector2d:
+    typecode = 'd'
+
+    # def __init__(self, x, y):
+    #     self.x = float(x)
+    #     self.y = float(y)
+    def __init__(self, x, y):
+        self.__x = float(x)  # 双下划线的
+        self.__y = float(y)
+
+    @property
+    def x(self):
+        """变成只读了。属性"""
+        return self.__x
+
+    @property
+    def y(self):
+        return self.__y
+
+    def __iter__(self):
+        return (i for i in (self.x, self.y))
+
+    def __hash__(self):
+        return hash(self.x) ^ hash(self.y)  # 变为散列的对象，是需要实现`__hash__`，但是hash需要值是不可变的。因而上面通过使用@property将和__x等将属性固定。
+
+    def __repr__(self):
+        class_name = type(self).__name__
+        return '{}({!r}, {!r})'.format(class_name, *self)  # format格式{0.mass:5.3e}。0和mass都算是这个{}字段的名字，:号后面是格式说明符。
+
+    def __str__(self):
+        return str(tuple(self))
+
+    def __bytes__(self):
+        return bytes([ord(self.typecode)]) + bytes(array(self.typecode, self))
+
+    def __eq__(self, other):
+        return tuple(self) == tuple(other)
+
+    def __abs__(self):
+        return math.hypot(self.x, self.y)
+
+    def __bool__(self):
+        return bool(abs(self))
+
+    def angle(self):
+        return math.atan2(self.y, self.x)
+
+    @classmethod
+    def frombytes(cls, octets):
+        """从序列读出字符串
+           一个新的构造方法，
+        """
+        typecode = chr(octets[0])
+        memv = memoryview(octets[1:]).cast(typecode)
+        return cls(*memv)  # cls会返回新的实例
+
+    # def __format__(self, format_spec=''):
+    #     components = (format(c, format_spec) for c in self)
+    #     return '({}, {})'.format(*components)
+    def __format__(self, format_spec):
+        if format_spec.endswith('p'):
+            format_spec = format_spec[:-1]
+            coords = (abs(self),self.angle())
+            outer_fmt = '<{}, {}>'
+        else:
+            coords = self
+            outer_fmt = '({}, {})'
+        components = (format(c, format_spec) for c in coords)
+        return outer_fmt.format(*components)
+
+```
 
 
 
@@ -761,6 +904,62 @@ class Demo:
 ('spam', )
         
 ```
+
+
+
+### Python的私有属性和“受保护的”属性
+
+通过实现双下划线，可以实现对属性名称进行改名，比如以`__mod`命名属性，python将其存入实例的`__dict__`属性中，而且会在前面加上下划线和类名。对于A来说，他就变成`_A__mod`。
+
+这样的设置只是为了防止意外修改的发生，但是你还是能通过`_A__mod`对属性进行修改，但这是强制性的。
+
+另一种形式是单下划线，`_mod`，这被称为是私有属性，但是这更多的是程序员约定的规则。
+
+
+
+### 使用`__slots__`类属性节省内存空间
+
+在各个实例中，`__dict__`的字典中存储实例属性，但是字典会消耗大量的内存。通过`__slots__`让解释器在元组中存储实例属性，而不使用字典。
+
+继承自超类的`__slots__`属性没有效果。python只会使用各个类中定义的`__slots__`属性。
+
+定义`__slots__` 的方式是，创建一个类属性，使用 `__slots__`这个名 字，并把它的值设为一个字符串构成的可迭代对象，其中各个元素表示各个实例属性。
+
+```python
+class Vector2d:
+    __slots__ = ('__x', '__y')
+    typecode = 'd'
+```
+
+在类中定义`__slots__`属性的目的是告诉解释器：“这个类中的所有实 例属性都在这儿了！”这样，Python 会在各个实例中使用类似元组的结 构存储实例变量，从而避免使用消耗内存的`__dict__`属性。如
+
+在类中定义`__slots__`属性之后，实例不能再有`__slots__`中所列名称之外的其他属性。这只是一个副作用，不是 `__slots__`存在的真正原因。不要使用 `__slots__`属性禁止类的 用户新增实例属性。`__slots__`是用于优化的，不是为了约束程序员。
+
+如果把 `'__dict__'` 这个名称 添加到 `__slots__` 中，实例会在元组中保存各个实例的属性，此外还支持动态创建属性，这些属性存储在常规的 `'__dict__'`中。当然，把 `__dict__ 添加到 `__slots__`中可能完全违背了初衷，这取决于各个 实例的静态属性和动态属性的数量及其用法
+
+用户定义的类中 默认就有 `__weakref__ `属性。可是，如果类中定义了` __slots__ `属 性，而且想把实例作为弱引用的目标，那么要把 `'__weakref__' `添加 到 `__slots__` 中。 
+
+
+
+### 覆盖类属性
+
+Vector2d 中有个 `typecode` 类属性，`__bytes__` 方法两次用到了 它，而且都故意使用 `self.typecode` 读取它的值。如果为不存在的实例属性赋值，会新建实例属性。假如我们为 `typecode`实例属性赋值，那么同名类属性不受影响。然而，自此之 后，实例读取的 `self.typecode` 是实例属性 `typecode`，也就是把同 名类属性遮盖了。
+
+如果想修改类属性的值，要直接在类上修改。
+
+```python
+Vector2d.typecode = 'f'
+```
+
+修改子类的属性，需要继承
+
+```python
+from vector2d import Vector2d
+class ShortVector2d(Vector2d):
+    typecode = 'f'
+```
+
+这样就只会影响子类的属性。而且每个类可以设置不同的值。
 
 
 
