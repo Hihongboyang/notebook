@@ -965,6 +965,472 @@ class ShortVector2d(Vector2d):
 
 
 
+## 序列的修改、散列和切片
+
+首先什么是鸭子类型，叫起来像，看起来像，用起来像，那这就是鸭子，不要检查他是不是。
+
+其实这核心说的是，只要实现python中已经定义的接口或者协议，那么这个新的类型就属于协议所属的那个类型。
+
+以序列类型为背景说明python的几个特殊方法。
+
+vector 第一版  与vector2d兼容
+
+```python
+class vector_v1:
+    """实现序列协议"""
+    typecode = 'd'
+
+    def __init__(self, components):
+        """接收可迭代的对象作为参数，内置类型都是这么做的"""
+        self._components = array(self.typecode, components)  
+
+    def __iter__(self):
+        return iter(self._components)
+
+    def __repr__(self):
+        # 获取 self._components 的有限长度表示形式(如 array('d', [0.0, 1.0, 2.0, 3.0, 4.0, ...]))。
+        # reprlib.repr实现有限长度的显示，python2中是repr
+        components = reprlib.repr(self._components)
+        # 把字符串插入 Vector 的构造方法调用之前，去掉前面的 array('d' 和后面的 )。
+        components = components[components.find('['):-1]
+        return "Vector({})".format(components)
+
+    def __str__(self):
+        return str(tuple(self))
+
+    def __bytes__(self):
+        return bytes([ord(self.typecode)]) + bytes(self._components)
+
+    def __eq__(self, other):
+        return tuple(self) == tuple(other)
+
+    def __abs__(self):
+        return math.sqrt(sum(x * x for x in self))
+
+    def __bool__(self):
+        return bool(abs(self))
+
+    @classmethod
+    def frombytes(cls, octets):
+        """从字节序列返回一个新的实例"""
+        typecode = chr(octets[0])
+        memv = memoryview(octets[1:]).cast(typecode)
+        return cls(memv)
+
+```
+
+
+
+在面向对象编程中，协议是非正式的接口，只在文档中定义，在代码中不定义。例如，Python 的序列协议只需要 `__len__` 和 `__getitem__` 两 个方法。任何类（如 Spam），只要使用标准的签名和语义实现了这两 个方法，就能用在任何期待序列的地方。
+
+```python
+import collections
+Card = collections.namedtuple("Card", ['rank', 'suit'])
+
+class FrenchDeck:
+    """接口协议"""
+    ranks = [str(n) for n in range(2, 11)] + list("JQKA")
+    suits = 'spads diamonds clude hearts'.split()
+
+    def __init__(self):
+        self._cards = [Card(rank, suit) for suit in self.suits for rank in self.ranks]
+
+    def __len__(self):
+        return len(self._cards)
+
+    def __getitem__(self, item):
+        return self._cards[item]
+
+```
+
+通过`__len__`和`__getitem__`方法可以使FrenchDeck表现的像序列。
+
+vector的第二版，支持序列的切片。
+
+```python
+class Vector:
+    def __len__(self):
+        return len(self._components)
+    def __getitem__(self, index):
+        return self._components[index]
+```
+
+`__getitem__`方法会返序列的切片，但他返回的数组类型，但是数组类型就丧失了Vector类很多特性。如果能返回Vector类就更好了。
+
+### 切片的原理
+
+```python
+>>> class MySeq:     
+    def __getitem__(self, index):  
+        return index
+>>> s = MySeq() 
+>>> s[1] 
+1
+
+>>> s[1:4]   
+slice(1, 4, None)   # 他的返回类型改变了，v2版本正是利用了这一特性。
+
+>>> s[1:4:2]  
+slice(1, 4, 2) 
+
+>>> s[1:4:2, 9]  
+(slice(1, 4, 2), 9) 
+
+>>> s[1:4:2, 7:9]  
+(slice(1, 4, 2), slice(7, 9, None))
+```
+
+**从1：4开始，返回的类型变成slice**。slice是内置类型，他有一个indices属性
+
+```python
+help(slice.indices)
+S.indices(len) -> (start, stop, stride)
+```
+
+给定长度为 len 的序列，计算 S 表示的扩展切片的起始（start） 和结尾（stop）索引，以及步幅（stride）。超出边界的索引会被截掉，这与常规切片的处理方式一样。
+
+这个方法会“整顿”元组，把 start、stop 和 stride 都变成非负数，而且都落在指定长度序列的边界内。
+
+这是实现序列切片的底层方法。现在我们不需要使用他，但是底层是与之类似的方法。
+
+```python
+slice(None, 10,2).indices(5)
+(0,5,2)
+
+slice(-3, None, None).indices(5)
+(2,5,1)
+```
+
+### 能处理切片的`__getitem__`方法
+
+```python
+class vector_v2:
+    """实现序列协议"""
+    typecode = 'd'
+
+    def __init__(self, components):
+        """接收可迭代的对象作为参数，内置类型都是这么做的"""
+        self._components = array(self.typecode, components)  
+
+    def __iter__(self):
+        return iter(self._components)
+
+    def __repr__(self):
+        # 获取 self._components 的有限长度表示形式(如 array('d', [0.0, 1.0, 2.0, 3.0, 4.0, ...]))。
+        # reprlib.repr实现有限长度的显示，python2中是repr
+        components = reprlib.repr(self._components)
+        # 把字符串插入 Vector 的构造方法调用之前，去掉前面的 array('d' 和后面的 )。
+        components = components[components.find('['):-1]
+        return "Vector({})".format(components)
+
+    def __str__(self):
+        return str(tuple(self))
+
+    def __bytes__(self):
+        return bytes([ord(self.typecode)]) + bytes(self._components)
+
+    def __eq__(self, other):
+        return tuple(self) == tuple(other)
+
+    def __abs__(self):
+        return math.sqrt(sum(x * x for x in self))
+
+    def __bool__(self):
+        return bool(abs(self))
+
+    @classmethod
+    def frombytes(cls, octets):
+        """从字节序列返回一个新的实例"""
+        typecode = chr(octets[0])
+        memv = memoryview(octets[1:]).cast(typecode)
+        return cls(memv)
+    
+    def __len__(self):
+        return len(self._components)
+    
+    def __getitem__(self, index):
+        cls = type(self)
+        if isinstance(index, slice):  # 如果是切片形式的索引如[1：5]，则index是slice类型的。
+            return cls(self._components[index])
+        elif isinstance(index, numbers.Integral):
+            return self._components[index]
+        else:
+            msg = "{cls.__name__} indices must be integers"
+            raise TypeError(msg.format(cls=cls))
+```
+
+
+
+### 能动态获取属性的Vector
+
+想要获得如v.x   v.y  v.z的方式来获取v中特定的属性值，如向量Vector中前三个分量。
+
+```python
+>>> v = Vector(range(10))
+>>> v.x
+0.0
+>>> x.y, v.z, v.t
+(1.0, 2.0, 3.0)
+```
+
+在 Vector2d 中，我们使用 @property 装饰器把 x 和 y 标记为只读特性（见示例 9-7）。我们可以在 Vector 中编写四个特性，但这样太麻烦。特殊方法 `__getattr__ `提供了更好的方式。
+
+属性查找失败后，解释器会调用 `__getattr__` 方法。简单来说，对 my_obj.x 表达式，Python 会检查 my_obj 实例有没有名为 x 的属性； 如果没有，到类（my_obj.`__class__`）中查找；如果还没有，顺着继 承树继续查找。 如果依旧找不到，调用 my_obj 所属类中定义的 `__getattr__`方法，传入 self 和属性名称的字符串形式（如 'x'）。
+
+```python
+shortcut_name = 'xyzt'
+def __getattr__(self, name):
+    cls = type(self)
+    if len(name) == 1:
+        pos = cls.shortcut_names.find(name)  # 获取单个字母的位置
+        if 0 <= pos < len(self._components):  # 如果位置合适
+            return self._components[pos]  # 返回对应位置
+    msg = '{.__name__ !r} object has no attribute {!r}'  
+    raise AttributeError(msg.format(cls, name))  # 不是其中就返回错误
+```
+
+现在这并不是完美的还是有问题的
+
+```python
+>>> v = Vector(range(5)) 
+>>> v Vector([0.0, 1.0, 2.0, 3.0, 4.0]) 
+>>> v.x
+0.0 
+>>> v.x = 10  # 赋值为实例增加了一个x属性。
+>>> v.x
+10 
+>>> v 
+Vector([0.0, 1.0, 2.0, 3.0, 4.0])
+```
+
+这样的错误是因为`__getattr__`的运作方式导致的：仅当对象没有指定名称的属性时，Python才会调用那个方法，这是一i中后备机制。
+
+`__getattr__`和`__setattr__`应该配合使用，以保证在设置新属性时，拒绝。
+
+```python
+def __setattr__(self, name, value):
+    cls = type(self)
+    if len(name) == 1:
+        if name in cls.shortcut_names:
+            error = 'readonly attribute {attr_name!r}'
+        elif name.islower():
+            error = "can't set attributes 'a' to 'z' in {cls_name!r}"
+        else:
+            error = ''
+        if error:
+            msg = error.format(cls_name = cls.__name__, sttr_name = name)
+            raise AttributeError(msg)
+    super().__setattr__(name, value)
+```
+
+整理一下
+
+```python
+class Vector_v3:
+    shortcut_name = 'xyzt'
+    
+    def __getattr__(self, name):
+        cls = type(self)
+        if len(name) == 1:
+            pos = cls.shortcut_names.find(name)  # 获取单个字母的位置
+            if 0 <= pos < len(self._components):  # 如果位置合适
+                return self._components[pos]  # 返回对应位置
+        msg = '{.__name__ !r} object has no attribute {!r}'  
+        raise AttributeError(msg.format(cls, name))  # 不是其中就返回错误
+        
+    def __setattr__(self, name, value):
+        cls = type(self)
+        if len(name) == 1:
+            if name in cls.shortcut_names:
+                error = 'readonly attribute {attr_name!r}'
+            elif name.islower():
+                error = "can't set attributes 'a' to 'z' in {cls_name!r}"
+            else:
+                error = ''
+            if error:
+                msg = error.format(cls_name = cls.__name__, sttr_name = name)
+                raise AttributeError(msg)
+        super().__setattr__(name, value)
+```
+
+ 
+
+### 散列和快速等值
+
+实现`__hash__`和`__eq__`，这会把Vector实例变成可散列的对象。
+
+归约函数（reduce， sum， any，all）把序列或有限的可迭代对象变成一个聚合结果。本小节注重归约函数的使用。
+
+```python
+from array import array
+import reprlib
+import math
+import functools
+import operator
+
+class Vector_v4:
+    typecode = "d"
+    def __eq__(self,other):
+        if len(self) != len(other):
+            return False
+    for a,b in zip(self, other):
+        if a != b:
+            return False
+    return True
+    
+    def __hash__(self):
+        hashes = map(hash, self._components)
+        return functools.reduce(operator.xor, hashes)
+```
+
+
+
+
+
+### 格式化
+
+`__format__`方法，要使用球坐标来表示，这个向量  <r, Φ1,  Φ2,  Φ3>，其中r是模，余下三个是角坐标 。
+
+两个辅助方法，angle(n) 计算角坐标，另一个是angles()，返回所有角坐标构成的可迭代对象。
+
+```python
+from array import array
+import reprlib
+import math
+import numbers
+import functools
+import operator
+import itertools
+
+class vector_v5:
+    """实现序列协议"""
+    typecode = 'd'
+
+    def __init__(self, components):
+        """接收可迭代的对象作为参数，内置类型都是这么做的"""
+        self._components = array(self.typecode, components)  
+
+    def __iter__(self):
+        return iter(self._components)
+
+    def __repr__(self):
+        # 获取 self._components 的有限长度表示形式(如 array('d', [0.0, 1.0, 2.0, 3.0, 4.0, ...]))。
+        # reprlib.repr实现有限长度的显示，python2中是repr
+        components = reprlib.repr(self._components)
+        # 把字符串插入 Vector 的构造方法调用之前，去掉前面的 array('d' 和后面的 )。
+        components = components[components.find('['):-1]
+        return "Vector({})".format(components)
+
+    def __str__(self):
+        return str(tuple(self))
+
+    def __bytes__(self):
+        return bytes([ord(self.typecode)]) + bytes(self._components)
+
+    def __abs__(self):
+        return math.sqrt(sum(x * x for x in self))
+
+    def __bool__(self):
+        return bool(abs(self))
+
+    @classmethod
+    def frombytes(cls, octets):
+        """从字节序列返回一个新的实例"""
+        typecode = chr(octets[0])
+        memv = memoryview(octets[1:]).cast(typecode)
+        return cls(memv)
+    
+    def __len__(self):
+        return len(self._components)
+    
+    def __getitem__(self, index):
+        cls = type(self)
+        if isinstance(index, slice):  # 如果是切片形式的索引如[1：5]，则index是slice类型的。
+            return cls(self._components[index])
+        elif isinstance(index, numbers.Integral):
+            return self._components[index]
+        else:
+            msg = "{cls.__name__} indices must be integers"
+            raise TypeError(msg.format(cls=cls))
+    
+    shortcut_name = 'xyzt'
+    
+    def __getattr__(self, name):
+        cls = type(self)
+        if len(name) == 1:
+            pos = cls.shortcut_names.find(name)  # 获取单个字母的位置
+            if 0 <= pos < len(self._components):  # 如果位置合适
+                return self._components[pos]  # 返回对应位置
+        msg = '{.__name__ !r} object has no attribute {!r}'  
+        raise AttributeError(msg.format(cls, name))  # 不是其中就返回错误
+        
+    def __setattr__(self, name, value):
+        cls = type(self)
+        if len(name) == 1:
+            if name in cls.shortcut_names:
+                error = 'readonly attribute {attr_name!r}'
+            elif name.islower():
+                error = "can't set attributes 'a' to 'z' in {cls_name!r}"
+            else:
+                error = ''
+            if error:
+                msg = error.format(cls_name = cls.__name__, sttr_name = name)
+                raise AttributeError(msg)
+        super().__setattr__(name, value)
+        
+    def __eq__(self, other):
+        if len(self) != len(other):
+            return False
+        for a,b in zip(self, other):
+            if a != b:
+                return False
+        return True
+    
+    def __eq__(self, other):
+        return len(self) == len(other) and all(a ==b for a, b in zip(self, other))
+    
+    def __hash__(self):
+        hashes = map(hash, self._components)
+        return functools.reduce(operator.xor, hashes)
+    
+    def angle(self, n):
+        r = math.sqrt(sum(x * x for x in self[n:]))
+        a = math.atan2(r, self[n-1])
+        if (n == len(self) - 1) and (self[-1] < 0):
+            return math.pi * 2 - a
+        else:
+            return a
+        
+    def angles(self):
+        return (self.angle(n) for n in range(1, len(self)))
+    
+    def __format__(self, fmt_spec = ''):
+        if fmt_spec.endwith('h'):
+            fmt_spec = fmt_spec[:-1]
+            coords = itertools.chain([abs(self)], self.angles())
+            outer_fmt = '<{}>'  # 球面坐标
+        else:
+            coords = self
+            outer_fmt = '({})'  # 迪卡儿坐标
+        components = (format(c, fmt_spec) for c in coords)
+        return outer_fmt.format(', '.join(components))
+    
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
