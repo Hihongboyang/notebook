@@ -1421,6 +1421,258 @@ class vector_v5:
 
 
 
+## 接口：从协议到抽象基类
+
+从鸭子类型的代表特征动态协议，到使接口更明确、能验证实现是否符合规定的抽象基类。
+
+
+
+## python中的接口和协议
+
+除了抽象基类，每个类都有接口： 类实现或继承的公开属性（方法或数据属性），包括特殊方法，如 `__getitem__ `或 `__add__`。 按照定义，受保护的属性和私有属性不在接口中：即便“受保护的”属性也只是采用命名约定实现的（单个前导下划线）；私有属性可以轻松地访问。
+
+不要觉得把公开数据属性放入对象的接口中不妥，因为如果需要，总能实现读值方法和设值方法，把数据属性变成特性，使用 obj.attr 句法的客户代码不会受到影响。
+
+关于接口，这里有个实用的补充定义：对象公开方法的子集，让对象在系统中扮演特定的角色。接口是实现特定角色的方法集合。
+
+### 序列的协议
+
+实现一个`__getitem__`方法，只是实现序列协议的一部分，这就足够访问元素、迭代和使用in运算符了。
+
+```python
+class Foo:
+    def __getitem__(self, pos):
+        return range(0, 30, 10)[pos]
+    
+>>> f = Foo() 
+>>> f[1] 
+10 
+>>> for i in f: print(i)
+0 
+10 
+20 
+>>> 20 in f 
+True 
+>>> 15 in f 
+False
+```
+
+在这个FrenchDeck类中只实现了两个协议`__len__`和`__getitem__`
+
+```python
+import collections
+Card = collections.namedtuple('Card', ['rank', 'suit'])
+class FrenchDeck:    
+    ranks = [str(n) for n in range(2, 11)] + list('JQKA')    
+    suits = 'spades diamonds clubs hearts'.split()
+    def __init__(self):        
+        self._cards = [Card(rank, suit) for suit in self.suits for rank in self.ranks]
+        
+    def __len__(self):        
+        return len(self._cards)
+    
+    def __getitem__(self, position):        
+        return self._cards[position]
+```
+
+
+
+### 使用猴子补丁在运行时实现协议 
+
+上面的FrenchDeck类无法完成洗牌的操作，因为他只实现了不可变序列的协议，想要完成洗牌的操作，必须将他变成可变序列，这只需实现`__setitem__`方法。
+
+因为python是动态语言，因此可以在运行时修正这个问题。这叫做猴子补丁：在运行时修改类或模块，而不改动源码。猴子补丁很强大，但是打补丁的代码与要打补丁的程序耦合十分紧密，而且往往要处理隐藏和没有文档的部分。
+
+如下所示，我们**必须得知道FrenchDeck有一个_cards属性才能够正常的修改**。
+
+```python
+def set_card(deck, position, card):
+    deck._cards[position] = card
+
+FrenchDeck.__setitem__ = set_card
+```
+
+
+
+## 为什么要引入抽象基类
+
+Alex Marte lli的短文中可以看出，引入抽象基类是为了区分那些实现了相同方法名，但是其本质上是不同种类的类的类型。因为他指出，白鹅类型（goose typing）是要显式的检查实例是不是属于哪个类的： 
+
+只要cls是抽象基类，即cls的元类是abc.ABCMeta，就可以使用`isinstance(obj, cls)`。
+
+抽象基类有很多理论上的优点：
+
+可以使用 register 类方法在终端用户的代码中把某个类“声明”为一个抽象基类的“虚 拟”子类（为此，被注册的类必须满足抽象基类对方法名称和签名的要求，最重要的是要满足底层语义契约；但是，开发那个类时不用了解抽象基类，更不用继承抽象基类）。
+
+如果实现的类体现了numbers、collections.abc 或其他框架中抽象基类的概念，要 么继承相应的抽象基类（必要时），要么把类注册到相应的抽象基类中。开始开发程序时，不要使用提供注册功能的库或框架，要自己动手注册；如果必须检查参数的类型（这是最常见的），例如检 查是不是“序列”，那就这样做：
+
+```python
+isinstance(the_arg, collection.abc.Sequence)
+```
+
+
+
+### 定义抽象基类
+
+创建一个可以洗牌的纸牌堆。就是实现了序列的赋值`__setitem__`方法
+
+```python
+import collections
+Card = collections.namedtuple('Card', ['rank', 'suit'])
+
+class FrenchDeck2(collections.MutableSequence):
+    ranks = [str(n) for n in range(2, 11)] + list('JQKA')
+    suits = 'spades diamonds clubs hearts'.split()
+
+    def __init__(self):
+        self._cards = [Card(rank, suit) for suit in self.suits for rank in self.ranks]
+
+    def __len__(self):
+        return len(self._cards)
+
+    def __getitem__(self, item):
+        return self._cards[item]
+
+    def __setitem__(self, key, value):
+        self._cards[key] = value
+
+    def __delitem__(self, key):
+        del self._cards[key]
+
+    def insert(self, index: int, value) -> None:
+        self._cards.insert(index, value)
+
+```
+
+`__delitem__`和`insert`是MutableSequence要求实现的抽象方法。
+
+### 标准库中的抽象基类
+
+大多数抽象基类在 collections.abc 模块中定义，不过其他地方也有。例如，numbers 和 io 包中有一些抽象基类。但是，collections.abc 中的抽象基类最常用。
+
+collections.abc模块中的抽象基类
+
+标准库中有两个名为 abc 的模块，一个是collections.abc，另一个 abc 模块就是 abc，他定义的是abc.ABC模块。每个抽象基类都依赖这个类，但是不用手动导入。
+
+![1573788415826](E:\存储文档\书籍\biji\assets\1573788415826.png)
+
+Iterable、Container、Sized
+
+各个集合应该继承这三个抽象基类，或者至少实现兼容的协 议。Iterable 通过 `__iter__`方法支持迭代，Container 通过 `__contains__` 方法支持 in 运算符，Sized 通过 `__len__` 方法支持 len() 函数。 
+
+Sequence、Mapping、Set
+
+这三个是主要的不可变集合类型，而且各自都有可变的子 类。
+
+MappingView
+
+在 Python 3 中，映射方法 .items()、.keys() 和 .values() 返回 的对象分别是 ItemsView、KeysView 和 ValuesView 的实例。前两个 类还从 Set 类继承了丰富的接口，
+
+Callable、Hashable
+
+这两个抽象基类与集合没有太大的关系，只不过因为 collections.abc 是标准库中定义抽象基类的第一个模块，而它们又 太重要了，因此才把它们放到 collections.abc 模块中。我从未见过 Callable 或 Hashable 的子类。这两个抽象基类的主要作用是为内置函数 isinstance 提供支持，以一种安全的方式判断对象能不能调用或 散列。
+
+若想检查是否能调用，可以使用内置的 callable() 函数；但是没有类似的 hashable() 函 数，因此测试对象是否可散列，最好使用 isinstance(my_obj, Hashable)。
+
+Iterator
+
+它是 Iterable 的子类。
+
+
+
+### 数字基类
+
+numbers 包定义的是“数字塔”（即各个抽象基类的层次结构是线性的），其中 Number 是位于最顶端的超类，随后是 Complex 子类，依次往下，最底端是 Integral 类：
+
+- Number 
+- Complex 
+- Real 
+- Rational 
+- Integral
+
+如果想检查一个数是不是整数，可以使用 isinstance(x, numbers.Integral)，这样代码就能接受 int、bool（int 的子 类），或者外部库使用 numbers 抽象基类注册的其他类型。
+
+如果一个值可能是浮点数类型，可以使用 isinstance(x, numbers.Real) 检查。这样代码就能接受 bool、int、float、fractions.Fraction，或者外部库（如 NumPy，它做了相应的注册）提供的非复数类型。
+
+下来就是实现一个抽象基类，但是并不推荐自己实现抽象基类。
+
+### 定义一个抽象基类
+
+假设一个应用场景
+
+你要在网站或移动应用中显示随机广告，但是在整个 广告清单轮转一遍之前，不重复显示广告。假设我们在构建一个广告管 理框架，名为 ADAM。它的职责之一是，支持用户提供随机挑选的无重 复类。 为了让 ADAM 的用户明确理解“随机挑选的无重复”组件是什么 意思，我们将定义一个抽象基类。
+
+Tombola 抽象基类有四个方法，其中两个是***抽象方法***。 
+
+- .load(...)：把元素放入容器。
+
+-  .pick()：从容器中随机拿出一个元素，返回选中的元素。
+
+另外两个是***具体***方法
+
+- .loaded()：如果容器中至少有一个元素，返回 True。 
+
+- .inspect()：返回一个有序元组，由容器中的现有元素构成，不 会修改容器的内容（内部的顺序不保留）。
+
+
+![1573807754000](E:\存储文档\书籍\biji\assets\1573807754000.png)
+
+
+
+````python
+import abc
+class Tombola(abc.ABC):
+    @abc.abstractmethod
+    def load(self, iterable):
+        """从可迭代对象中添加元素"""
+
+    @abc.abstractmethod
+    def pick(self):
+        """随机删除元素，然后将其返回
+        如果列表为空，这个方法应该抛出LookupError
+        """
+
+    def loaded(self):
+        """如果至少一个元素，返回Ture 否则返回False"""
+        # 抽象基类中的具体方法只能依赖抽象基类定义的接口
+        # （即只能使用 抽象基类中的其他具体方法、抽象方法或特性）。
+        return bool(self.inspect())
+
+    def inspect(self):
+        """返回一个有序元组，由当前元素构成"""
+        # 子类可以覆盖整个函数，使用更加明智的方式，因为子类是知道内部的数据结构的
+        items = []
+        while True:
+            try:
+                items.append(self.pick())
+                # 我们不知道具体子类如何存储元素，不过为了得到 inspect 的结果，
+                # 我们可以不断调用 .pick() 方法，把 Tombola 清空
+            except LookupError:
+                break
+        self.load(items)  # 又扔回去
+        return tuple(sorted(items))
+````
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
