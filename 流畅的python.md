@@ -1631,6 +1631,8 @@ class Tombola(abc.ABC):
         """随机删除元素，然后将其返回
         如果列表为空，这个方法应该抛出LookupError
         """
+        # self.pick()抛出LookupError这一事实也是接口的一部分，
+        # 但是在Python中没有办法声明，只能在文档中说明
 
     def loaded(self):
         """如果至少一个元素，返回Ture 否则返回False"""
@@ -1653,6 +1655,186 @@ class Tombola(abc.ABC):
         return tuple(sorted(items))
 ````
 
+异常类的关系。
+
+![1573870457569](E:\存储文档\书籍\biji\assets\1573870457569.png)
+
+![1573870470302](E:\存储文档\书籍\biji\assets\1573870470302.png)
+
+### 抽象基类的声明方法
+
+3.4之前的3版本没有引入abc.ABC需要使用metaclass=关键字，并把值设置为
+
+```python
+class Tombola(metacalss=abc.ABCMeta):
+```
+
+2.x中使用`__metaclass__`类属性
+
+```python
+class Tombola(object):
+	__metaclass__ = abc.ABCMeta
+```
+
+现在就是使用@abstractmethod来声明抽象方法。abc 模块还定义了@abstractclassmethod、@abstractstaticmethod 和 @abstractproperty 三个装饰器。但是已经废弃了，因为装饰器可以在 @abstractmethod 上堆叠，那三个就显得多余了。
+
+```python
+class MyABC(abc.ABC):
+    @classmethod
+    @abc.abstractmethod
+    def an_abstract_classmethod(cls, ...):
+        pass
+```
+
+
+
+### Tombola的子类BingoCage
+
+````python
+import random
+
+class BingoCage(Tombola):
+    """继承了Tombola的loaded和inspected方法，虽然这两个方法没这么有效"""
+    def __init__(self, items):
+        self._randomizer = random.SystemRandom()  
+        # 使用os.urandom()实现randomAPI。
+        # usrandom生成“适用于加密”的随机字节序列
+        self._items = []
+        self.load(items)
+        
+    def load(self, iterable):
+        self._items.extend(iterable)
+        self._randomizer.shuffle(self._items)
+        
+    def pick(self):
+        try:
+            return self._items.pop()
+        except IndexError:
+            raise LookupError('pick from empty BingoCage')
+        
+    def __call__(self):
+        self.pick()
+````
+
+
+
+另一个子类
+
+```python
+class LotteryBlower(Tombola):
+    def __init__(self, iterable):
+        self._balls = list(iterable)
+        # 列表的存储更为灵活，并且，创建了传入值的副本，以防止原始数据被更改
+
+    def load(self, iterable):
+        self._balls.extend(iterable)
+
+    def pick(self):
+        try:
+            position = random.randrange(len(self._balls))
+        except ValueError:
+            raise LookupError('pick from empty LotteryBlower')
+            # Tombola要求捕获的是LookupError
+        return self._balls.pop(position)
+
+    def loaded(self):
+        return bool(self._balls)
+
+    def inspect(self):
+        return tuple(sorted(self._balls))
+```
+
+
+
+### 虚拟子类
+
+白鹅类型的一个基本特性：即便不继承，也有办法把一个类注册为抽象基类的虚拟子类。这样做时，我们保证注册的类忠实地实现了抽象基类定义的接口，而 Python会相信我们， 从而不做检查。
+
+注册虚拟子类的方式是在抽象基类上调用 register 方法。这么做之 后，注册的类会变成抽象基类的虚拟子类，而且 issubclass 和 isinstance 等函数都能识别，但是注册的类不会从抽象基类中继承任 何方法或属性。
+
+虚拟子类不会继承注册的抽象基类，而且任何时候都不会检 查它是否符合抽象基类的接口，即便在实例化时也不会检查。为了 避免运行时错误，虚拟子类要实现所需的全部方法。
+
+````python
+@Tombola.register
+class TomboList(list):
+    def pick(self):
+        if self:  # TomboList 从list中继承__bool__方法，列表不为空时返回True
+            position = random.randrange(len(self))
+            return self.pop(position)  # 调用继承自list的self.pop方法，传入一个随机的元素索引
+        else:
+            raise LookupError('pop from empty TomboList')
+    load = list.extend
+
+    def loaded(self):
+        return bool(self)
+
+    def inspect(self):
+        return tuple(sorted(self))
+
+# Tombola.register(TomboList)  # python3.3之前的版本，不能把.register当作装饰器使用，必须使用标准的调用句法
+````
+
+类的继承关系在一个特殊的类属性中指定—— `__mro__`，即方法 解析顺序（Method Resolution Order）。这个属性的作用很简单，按顺序列出类及其超类，Python 会按照这个顺序搜索方法。 查看 TomboList 类的 `__mro__` 属性，你会发现它只列出了“真实的”超类， 即 list 和 object：
+
+```python
+TomboList.__mro__
+(<class 'tombolist.TomboList'>, <class 'list'>, <class 'object'>)
+```
+
+`Tombolist.__mro__` 中没有 Tombola，因此 Tombolist 没有从 Tombola 中继承任何方法。 
+
+### 抽象基类的子类检测方法
+
+`__subclasses__()`
+
+这个方法返回类的直接子类列表，不含虚拟子类。
+
+`_abc_registry`
+
+只有抽象基类有这个数据属性，其值是一个 WeakSet 对象，即抽象类注册的虚拟子类的弱引用。
+
+```python
+import doctest
+
+TEST_FILE = 'tombola_tests.rst'
+TEST_MSG = '{0:16} {1.attempted:2} tests, {1.failed:2} failed - {2}'
+
+
+def main(argv):
+    verbose = '-v' in argv
+    real_subclass = Tombola.__subclasses__()
+    virtual_subclasses = list(Tombola._abc_registry)
+    
+    for cls in real_subclass + virtual_subclasses:
+        test(cls,verbose)
+     
+        
+def test(cls, verbose = False):
+    res = doctest.testfile(TEST_FILE, 
+                           globs={'ConcreteTombola': cls},   #  把 cls 参数（要测试的类）绑定到全局命名空间里的 ConcreteTombola 名称上，供 doctest 使用。 
+                           verbose=verbose, 
+                           optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
+    tag = 'FAIL' if res.failed else 'OK'
+    print(TEST_MSG.format(cls.__name__, res, tag))
+    
+
+if __name__ == '__main__':
+    import sys
+    main(sys.argv)
+```
+
+
+
+### register的使用方式
+
+虽然现在可以把 register 当作装饰器使用了，但更常见的做法还是把它当作函数使用，用于注册其他地方定义的类。
+
+```python
+Sequence.register(tuple) 
+Sequence.register(str) 
+Sequence.register(range) 
+Sequence.register(memoryview)
+```
 
 
 
@@ -1663,6 +1845,34 @@ class Tombola(abc.ABC):
 
 
 
+
+
+
+
+
+
+
+## 可迭代的对象、迭代器和生成器
+
+扫描内存中放不下的数据集时，我们要找到一 种惰性获取数据项的方式，即按需一次获取一个数据项。这就是迭代器模式（Iterator pattern）。
+
+所有生成器都是迭代器，因为生成器完全实现了迭代器接口。根据《设计模式：可复用面向对象软件的基础》一书的定义，迭代器用于从集合中取出元素；而生成器用于“凭空”生成元素。
+
+本章的主要研究内容
+
+- 语言内部使用 iter(...) 内置函数处理可迭代对象的方式如何使用 Python 实现经典的迭代器模式
+
+- 详细说明生成器函数的工作原理
+
+- 如何使用生成器函数或生成器表达式代替经典的迭代器
+
+- 如何使用标准库中通用的生成器函数
+
+- 如何使用 yield from 语句合并生成器
+
+- 案例分析：在一个数据库转换工具中使用生成器函数处理大型数据集
+
+- 为什么生成器和协程看似相同，实则差别很大，不能混淆
 
 
 
