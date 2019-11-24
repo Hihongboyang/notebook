@@ -1938,11 +1938,19 @@ while True:
         break
 ```
 
+标准的迭代器接口实现了两个方法
 
+`__next__` : 返回下一个可用的元素，如果没有元素了，抛出StopIteration异常
 
+`__iter__` : 返回self，以便在应该使用迭代对象的地方使用迭代器。
 
+这个接口在collection.abc.Iterator抽象基类中制定。这个类定义了`__next__`抽象方法，而且继承了Itrable类。Iterable类定义了`__iter__` 抽象方法。
 
+在代码中最好不要直接检查对象的类型，比如使用isinstance，我们要检查是否实现了next和iter方法来区别我们的对象能做什么。
 
+下面给出迭代器的定义：实现了无参数的`__next__`方法，返回序列中的下一个元素。如果没有元素了，那么抛出StopIteration异常。python中的迭代器还实现了`__iter|__方法`因此迭代器也可以迭代。
+
+  
 
 
 
