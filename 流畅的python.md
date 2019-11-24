@@ -1861,28 +1861,82 @@ Sequence.register(memoryview)
 本章的主要研究内容
 
 - 语言内部使用 iter(...) 内置函数处理可迭代对象的方式如何使用 Python 实现经典的迭代器模式
-
 - 详细说明生成器函数的工作原理
-
 - 如何使用生成器函数或生成器表达式代替经典的迭代器
-
 - 如何使用标准库中通用的生成器函数
-
 - 如何使用 yield from 语句合并生成器
-
 - 案例分析：在一个数据库转换工具中使用生成器函数处理大型数据集
-
 - 为什么生成器和协程看似相同，实则差别很大，不能混淆
 
 
 
+### Sentence类，单词序列
+
+```python
+import re
+import reprlib
+RE_WORD = re.compile("\w+")
+
+class Sentence:
+    def __init__(self, text):
+        self.text = text
+        self.words = RE_WORD.findall(text) # findall返回所有非重叠匹配
+
+    def __getitem__(self, item):
+        return self.words[item]
+    
+    def __len__(self):
+        return len(self.words)
+    
+    def __repr__(self):
+        return 'Sentence(%s)' % reprlib.repr(self.text)
+    
+```
+
+向这个类的构造方法传入包含一些文本的字符串，然后可以逐个单词迭代。这个类是可以迭代的，为什么？？
+
+因为有**iter**函数
+
+解释器需要调用迭代对象x时，会自动调用`iter(x)`。
+
+这个函数有一个调用顺序：
+
+1. 检查对象是否实现了`__iter__`方法，如果实现了就调用它，获取一个迭代器。
+2. 如果没有实现`__iter__`方法，但是实现了`__getitem__`方法，python会创建一个迭代器，尝试按照顺序（从0开始索引）获取元素。
+3. 如果尝试失败，Python抛出TypeError异常，通常会提示“C object is not iterable”，其中C是目标对象所属的类。
+
+任何python序列都可迭代的原因是，他们都实现了`__getitem__`方法，标准序列都实现了`__iter__`。
+
+可迭代序列，没有必要显示的检查，直接捕获抛出异常即可。因为可迭代的序列不一定是abc.Iterable的子类。
 
 
 
+### 可迭代的对象与迭代器的对比
 
+可迭代的对象
 
+使用 iter 内置函数可以获取迭代器的对象。如果对象实现了能返回迭代器的 `__iter__` 方法，那么对象就是可迭代的。
 
+可迭代对象和迭代器之间的关系： Python 从可迭代的对象中获取迭代器。
 
+```python
+s = "ABC"  # s和ABC是可迭代对象 
+for char in s:  # for 语句自动从可迭代对象中获取了一个迭代器。
+    print(char)
+```
+
+for循环会自动处理迭代器结束后的StopIteration异常，而使用while循环需要自行处理
+
+```python
+s = "ABC"
+it = iter(s)  # 构建迭代器
+while True:
+    try:
+        print(next(it))  # 从迭代器上获取元素
+    except StopIteration:
+        del it  # 废弃迭代器
+        break
+```
 
 
 
