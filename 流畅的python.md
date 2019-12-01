@@ -1952,9 +1952,98 @@ while True:
 
   
 
+### 第二版Sentence类：迭代器
 
+```python
+class Sentence:
+    def __init__(self, text):
+        self.text = text
+        self.words = RE_WORD.findall(text)
 
+    def __repr__(self):
+        return 'Sentence(%s)' % reprlib.repr(self.text)
 
+    def __iter__(self):
+        return SentenceIterator(self.words)  # 返回一个迭代器
+
+class SentenceIterator:
+    def __init__(self, words):
+        self.words = words
+        self.index = 0
+
+    def __next__(self):
+        try:
+            word = self.words
+        except IndentationError:
+            raise StopIteration
+
+        self.index += 1
+
+    def __iter__(self):
+        return self
+```
+
+这一版本中多使用了一个`__iter__`方法，但是没有`__getitem__`。
+
+本没有必要在SentecnceIterator类中实现`__iter__`方法，但是这样做是正确的，因为迭代器应该实现`__iter__`和`__next__`方法。
+
+不过我们应不应该将Sentence类变为迭代器呢？
+
+可迭代对象要实现`__iter__`方法，每次都实例化一个新的迭代器。而迭代器要实现`__next__`方法，返回单个元素，同时实现`__iter__`方法返回迭代器本身。如果在Sentence中实现`__next__`，返回自身的迭代器，这样会造成混乱，一个迭代器返回另一个迭代器？
+
+迭代器模式可用做：
+
+- 访问一个聚合对象的内容而无需暴露它内部的表示
+- 支持聚合对象的多种遍历
+- 遍历不同的聚合结构提供一个统一的接口（支持多态迭代）
+
+为了支持多种遍历，必须能从同一个迭代的实例中获取多个独立的迭代器，而且各个迭代器要能维护自身的内部状态，因此这一模式应该的实现方式是，每次调用iter(my_iterable）都新建一个独立的迭代器。
+
+### Sentence类第三版 ：生成器函数
+
+```python
+class Sentence_3:
+    def __init__(self, text):
+        self.text = text
+        self.words = RE_WORD.findall(text)
+    
+    def __repr__(self):
+        return 'Sentence(%s)' % reprlib.repr(self.text)
+    
+    def __iter__(self):
+        for word in self.words:
+            yield word
+        return
+```
+
+在这个版本中我们将`__iter__`变成了一个生成器函数。
+
+第二版中`__iter__`方法调用SentenceIterator类的构造方法创造一个迭代器并将其返回。但是在这个版本中迭代器其实是生成器对象，每次调用`__iter__`方法都会自动创建，这里的`__iter__`方法是生成器函数。
+
+生成器的工作原理
+
+只要python函数定义体中有yield关键字，该函数就是生成器函数，每次调用都会返回一个生成器对象。这是一个生成器工厂。
+
+```python
+def gen_ABC():
+    print('start')
+    yield 'A'
+    print('continue')
+    yield 'B'
+    print('end.')
+
+for c in gen_ABC():
+    print('--->', c)
+    
+
+start
+---> A
+continue
+---> B
+end.
+```
+
+生成器会运行到yield关键字处等待，当调用next()函数后，会生成一个值然后继续运行到下一个yield关键字停留。for语句会隐式的调用next函数，并且for会处理StopIteration异常。
 
 
 
