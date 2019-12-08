@@ -1948,11 +1948,11 @@ while True:
 
 在代码中最好不要直接检查对象的类型，比如使用isinstance，我们要检查是否实现了next和iter方法来区别我们的对象能做什么。
 
-下面给出迭代器的定义：实现了无参数的`__next__`方法，返回序列中的下一个元素。如果没有元素了，那么抛出StopIteration异常。python中的迭代器还实现了`__iter|__方法`因此迭代器也可以迭代。
+下面给出迭代器的定义：实现了无参数的`__next__`方法，返回序列中的下一个元素。如果没有元素了，那么抛出StopIteration异常。python中的迭代器还实现了`__iter__`方法因此迭代器也可以迭代。
 
-  
 
-### 第二版Sentence类：迭代器
+
+### Sentence类第二版：典型的迭代器
 
 ```python
 class Sentence:
@@ -2044,6 +2044,136 @@ end.
 ```
 
 生成器会运行到yield关键字处等待，当调用next()函数后，会生成一个值然后继续运行到下一个yield关键字停留。for语句会隐式的调用next函数，并且for会处理StopIteration异常。
+
+
+
+### sentence类第4版：惰性实现
+
+python3中大量使用了生成器，这样可以节约内存。下面使用re.finditer函数使sentence类变成惰性的。
+
+```python
+import re
+import reprlib
+
+RE_WORD = re.compile('\w+')
+
+class Sentence:
+    def __init__(self.text):
+        self.text = text
+        
+    def __repr__(self):
+        return 'Sentence(%s)' % reprlib.repr(self.text)
+    
+    def __iter__(self):
+        for match in RE_WORD.finditer(self.text):
+            yield match.group()
+    
+```
+
+不再需要self.word这个包含元素的列表了，因为使用finditer函数构建了一个迭代器，再需要的时候取值。
+
+### sentence类第5版：生成器表达式
+
+首先来看看生成器表达式
+
+```python
+def gen_ABC():
+    # 首先创建一个生成器
+    print('start')
+    yield 'A'
+    print('continue')
+    yield 'B'
+    print('end')
+
+res1 = [x*3 for x in gen_ABC()]  # 在这个列表推导式中，相当于迫切的使gen_ABC进行了两次生成，然后存起来。
+#start
+#continue
+#end
+# 上面是打印出的值
+for i in res1:
+    # 当迭代res1这个列表的时候才会打印输出的值
+    print("-->", 1)
+#-->AAA
+#-->BBB
+
+res2 = (x*3 for x in gen_ABC())
+for i in res2:
+    # 只有for循环迭代res2时，gen_AB函数的定义体才会真正执行。for循环每次迭代时会隐式调next(res2)，前进到 gen_AB函数中的下一个yield语句。注意，gen_AB函数的输出与for循环中print函数的输出夹杂在一起。
+    print('-->', i)
+#start
+#-->AAA
+#continue
+#-->BBB
+```
+
+下面就是使用生成器的sentence类了
+
+```python
+import re
+import reprlib
+
+RE_WORD = re.compile('\w+')
+
+class Sentence:
+    def __init__(self, text):
+        self.text = text
+        
+    def __repr__(self):
+        return 'Stence(%s)' % reprlib.repr(self.text)
+    
+    def __iter__(self):
+        return (match.group() for match in RE_WORD.finditer(self.text))  # 这里使用生成器表达式构建生成器，然后将其返回。 
+```
+
+
+
+### 何时使用生成器表达式
+
+生成器表达式是创建生成器的简洁句法，这样无需先定义函数再调用。不过，生成器函数灵活得多，可以使用多个语句实现复杂的逻辑，也可以作为协程使用。
+
+遇到简单的情况时，可以使用生成器表达式，因为这样扫一眼就知道代码的作用。
+
+选择使用哪种句法很容易判断：如果生成器表达式要分成多行写，我倾向于定义生成器函数，以便提高可读性。此外，生成器函数有名称，因此可以重用。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
