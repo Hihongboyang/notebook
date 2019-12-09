@@ -2137,6 +2137,30 @@ class Sentence:
 
 
 
+### 利用生成器生成等差数列
+
+来看一个生成等差数列的例子
+
+```python
+class ArithmeticProgression:
+    def __init__(self, begin, step, end=None):
+        self.begin = begin
+        self.step = step
+        self.end = end
+        
+    def __iter__(self):
+        result = type(self.begin + self.step)(self.begin)  # 强制类型转换，使用加法的方式获取类型
+        forever = self.end is None
+        index = 0
+        while forever or result < self.end:
+            yield result
+            index += 1
+            result = self.begin + self.step * index  # 使用乘法可以规避浮点数的误差
+
+```
+
+如果一个类只是为了构建生成器而去实现 `__iter__ `方 法，那还不如使用生成器函数。毕竟，生成器函数是制造生成器的工 厂。
+
 
 
 
