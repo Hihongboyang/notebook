@@ -2161,11 +2161,59 @@ class ArithmeticProgression:
 
 如果一个类只是为了构建生成器而去实现 `__iter__ `方 法，那还不如使用生成器函数。毕竟，生成器函数是制造生成器的工 厂。
 
+如果将类换成函数的话也能够实现相同的功能。
+
+```python
+def ariprog_gen(begin, step, end=None):
+    result = type(begin + step)(begin)
+    forever = end is None
+    index = 0
+    while forever or result < end:
+        yield result
+        index += 1
+        result = begin + step * index
+```
+
+在python的内置模块itertools中有很多现成的生成器，而我们可以通过这些现成的生成器组成新的等差序列函数。
+
+itertools.conunt，会返回多个数，我们可以提供给他开始和步长，由他生成数字。但是count函数不会停止，我们得手动让他停止。可以使用另外一个函数itertools.takewhile，他会生成一个使用另一个生成器的生成器，并且在指定条件下终止。
+
+```python
+gen = itertools.takewhile(lamdba n: n<3, itertools.count(1, .5))
+list(gen)
+[1, 1.5, 2.0, 2.5]
+```
+
+对ariprog_gen函数进行改造。
+
+```python
+def ariprog_gen(begin, step, end=None):
+    first = type(begin + step)(begin)
+    ap_gen = itertools.count(first, step)
+    if end is not None:
+        ap_gen = itertools.takewhile(lamdba n: n<end, ap_gen)
+    return ap_gen
+```
+
+ariprog_gen本身不是生成器，因为他没有yield，但是他返回一个生成器。
 
 
 
+### 标准库中的生成器函数
 
+python中有很多编写好的生成器函数，实现了各种功能，我们可以直接利用这些函数，实现自己的功能。
 
+| 模块      | 函数                      | 说明                                                         |
+| --------- | ------------------------- | :----------------------------------------------------------- |
+| itertools | compress(it, selector_it) | 并行处理两个可迭代的对象；如果 selector_it 中的元素是真值,<br />产出 it 中对应的元素 |
+| itertools | dropwhile(predicate, it)  | c处理it，跳过predicate的计算结果为真的元素，然后产出剩下的各个元素（不再进行检测） |
+|           | filter()                  | 把it中的各个元素传给predicate，如果predicate(item)返回真值，那么产出对应的元素；如果predictate是None，那么只产出真值元素 |
+| itertools | filterfalse(predicate,it) |                                                              |
+|           |                           |                                                              |
+|           |                           |                                                              |
+|           |                           |                                                              |
+|           |                           |                                                              |
+|           |                           |                                                              |
 
 
 
