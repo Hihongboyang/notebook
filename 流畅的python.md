@@ -1949,6 +1949,7 @@ while True:
 在代码中最好不要直接检查对象的类型，比如使用isinstance，我们要检查是否实现了next和iter方法来区别我们的对象能做什么。
 
 下面给出迭代器的定义：实现了无参数的`__next__`方法，返回序列中的下一个元素。如果没有元素了，那么抛出StopIteration异常。python中的迭代器还实现了`__iter__`方法因此迭代器也可以迭代。
+<<<<<<< Updated upstream
 
 
 
@@ -1991,13 +1992,19 @@ class SentenceIterator:
 
 可迭代对象要实现`__iter__`方法，每次都实例化一个新的迭代器。而迭代器要实现`__next__`方法，返回单个元素，同时实现`__iter__`方法返回迭代器本身。如果在Sentence中实现`__next__`，返回自身的迭代器，这样会造成混乱，一个迭代器返回另一个迭代器？
 
-迭代器模式可用做：
+首先迭代器是用来干什么的：
 
 - 访问一个聚合对象的内容而无需暴露它内部的表示
-- 支持聚合对象的多种遍历
-- 遍历不同的聚合结构提供一个统一的接口（支持多态迭代）
+- 支持聚合对象的**多种遍历**
+- 遍历**不同的聚合结构**提供一个统一的接口（支持多态迭代）
 
-为了支持多种遍历，必须能从同一个迭代的实例中获取多个独立的迭代器，而且各个迭代器要能维护自身的内部状态，因此这一模式应该的实现方式是，每次调用iter(my_iterable）都新建一个独立的迭代器。
+为了支持多种遍历，必须能从同一个迭代的实例中获取多个独立的迭代器，而且各个迭代器要能维护自身的内部状态，因此这一模式应该的实现方式是，每次调用iter(my_iterable）都新建一个独立的迭代器。这就是为什么这个示例需要定义 SentenceIterator 类。
+
+可迭代对象一定不能是自身的迭代器。即可迭代对象要实现`__iter__`方法，但不能实现`__next__`方法。
+
+而迭代器应该一直可以迭代，`__iter__`方法应该返回自身。
+
+
 
 ### Sentence类第三版 ：生成器函数
 
@@ -2090,6 +2097,7 @@ res1 = [x*3 for x in gen_ABC()]  # 在这个列表推导式中，相当于迫切
 #continue
 #end
 # 上面是打印出的值
+
 for i in res1:
     # 当迭代res1这个列表的时候才会打印输出的值
     print("-->", 1)
@@ -2176,7 +2184,7 @@ def ariprog_gen(begin, step, end=None):
 
 在python的内置模块itertools中有很多现成的生成器，而我们可以通过这些现成的生成器组成新的等差序列函数。
 
-itertools.conunt，会返回多个数，我们可以提供给他开始和步长，由他生成数字。但是count函数不会停止，我们得手动让他停止。可以使用另外一个函数itertools.takewhile，他会生成一个使用另一个生成器的生成器，并且在指定条件下终止。
+itertools.count，会返回多个数，我们可以提供给他开始和步长，由他生成数字。但是count函数不会停止，我们得手动让他停止。可以使用另外一个函数itertools.takewhile，他会生成一个使用另一个生成器的生成器，并且在指定条件下终止。
 
 ```python
 gen = itertools.takewhile(lamdba n: n<3, itertools.count(1, .5))
@@ -2203,50 +2211,74 @@ ariprog_gen本身不是生成器，因为他没有yield，但是他返回一个�
 
 python中有很多编写好的生成器函数，实现了各种功能，我们可以直接利用这些函数，实现自己的功能。
 
+#### 用于过滤的生成器函数
+
+从输入的可迭代对象中产出元素的子集，而且不修改元素本身。
+
 | 模块      | 函数                                             | 说明                                                         |
 | --------- | ------------------------------------------------ | :----------------------------------------------------------- |
-| itertools | compress(it, selector_it)                        | 并行处理两个可迭代的对象；如果 selector_it 中的元素是真值,<br />产出 it 中对应的元素 |
-| itertools | dropwhile(predicate, it)                         | c处理it，跳过predicate的计算结果为真的元素，然后产出剩下的各个元素（不再进行检测） |
-|           | filter()                                         | 把it中的各个元素传给predicate，如果predicate(item)返回真值，那么产出对应的元素；如果predictate是None，那么只产出真值元素 |
+| itertools | compress(it, selector_it)                        | 并行处理两个可迭代的对象；如果 selector_it 中的元素是真值,产出 it 中对应的元素 |
+| itertools | dropwhile(predicate, it)                         | 处理it，跳过predicate的计算结果为真的元素，然后产出剩下的各个元素（不再进行检测） |
+|           | filter(predicate, it)                            | 把it中的各个元素传给predicate，如果predicate(item)返回真值，那么产出对应的元素；如果predictate是None，那么只产出真值元素 |
 | itertools | filterfalse(predicate,it)                        | 与filter函数作用类似，不过predicate的逻辑相反：predicate返回假值时产出对应的元素。 |
 | itertools | islice(it,step)或islice(it, start, stop, step=1) | 产出it切片，作用类似于 s[:step]或s[start:stop:step]，不过it可以是任何迭代的对象，而且这个函数实现的是惰性操作。 |
 | itertools | takewhile(predicate, it)                         | predicate 返回真值时产出对应的元素，然后立即停止，不再继续检查 |
 |           |                                                  |                                                              |
-|           |                                                  |                                                              |
-|           |                                                  |                                                              |
 
 
 
+#### 用于映射的生成器函数
+
+在输入的单个可迭代对象（map 和 starmap 函数处理多个可迭代的对象）中的各个元素上做计算，然后返回结果
+
+| 模块      | 函数                           | 说明                                                         |
+| --------- | ------------------------------ | ------------------------------------------------------------ |
+| itertools | accumulate(it, [func])         | 产出累积的总和：如果提供了func，那么把前两个元素传给它，然后把计算结果和下一个元素传给它，以此类推，最后产出结果 |
+|           | enumerate(iterable, start=0)   | 产出两个元素组成的元组，结构是 (index, item)，其中 index 从 start 开始计数，item 则从 iterable 中获取 |
+|           | map(func, it1, [it2,···, itN]) | 把it中的各个元素传给func，产出结果；如果传入N个可迭代的对象，那么func必须能接受N个参数，而且要并行处理各个可迭代的对象 |
+| itertools | starmap(func, it)              | 把 it 中的各个元素传给 func，产出结果；输入的 可迭代对象应该产出可迭代的元素 iit，然后以 func(*iit) 这种形式调用 func |
+|           |                                |                                                              |
 
 
 
+#### 合并多个可迭代对象的生成器函数
+
+这些函数都从输入的多个可迭 代对象中产出元素。
+
+| 模块      | 函数                                       | 说明                                                         |
+| --------- | ------------------------------------------ | ------------------------------------------------------------ |
+| itertools | chain(it1, ..., itN)                       | 先产出 it1 中的所有元素，然后产出 it2 中的 所有元素，以此类推，无缝连接在一起 |
+| itertools | chain.from_iterable(it)                    | 产出it生成的各个可迭代对象中的元素,一个 接一个,无缝连接在一起; it 应该产出可迭代 的元素，例如可迭代的对象列表 |
+| itertools | product(it1, ..., itN, repeat)             | 计算笛卡儿积：从输入的各个可迭代对象中获 取元素，合并成由 N 个元素组成的元组，与嵌 套的 for 循环效果一样；repeat 指明重复处理 多少次输入的可迭代对象 |
+|           | zip(it1, ..., itN)                         | 并行从输入的各个可迭代对象中获取元素，产出由 N 个元素组成的元组，只要有一个可迭代的对象到头了，就默默地停止 |
+| itertools | zip_longest(it1, ..., itN, fillvalue=None) | 并行从输入的各个可迭代对象中获取元素，产出由 N 个元素组成的元组，等到最长的可迭代对象到头后才停止，空缺的值使用 fillvalue 填充 |
+|           |                                            |                                                              |
 
 
 
+#### 把输入的各个元素扩展成多个输出元素的生成器函数
+
+| 模块      | 函数                                       | 说明                                                         |
+| --------- | ------------------------------------------ | ------------------------------------------------------------ |
+| itertools | combination(it, out_len)                   | 把 it 产出的out_len个元素(几个)组合在一起，然后产出          |
+| itertools | combinations_with_replacement(it, out_len) | 把 it 产出的 out_len 个元素组合在一起，然后产出，包含相同元素的组合 |
+| itertools | count(start=0, step=1)                     | 从 start 开始不断产出数字，按step指定的步幅增加              |
+| itertools | cycle(it)                                  | 从 it 中产出各个元素，存储各个元素的副本，然后按顺序重复不断地产出各个元素 |
+| itertools | permutations(it, out_len=None)             | 把 out_len个it产出的元素排列在一起，然后产出这些排列; out_len的默认值等于len(list(it)) |
+| itertools | repeat(item, [times])                      | 重复不断地产出指定的元素，除非提供 times，指定次数           |
+|           |                                            |                                                              |
 
 
 
+#### 用于重新排列元素的生成器函数
 
+这些生成器最多只接受一个可迭代对象。
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+| 模块      | 函数                  | 说明                                                         |
+| --------- | --------------------- | ------------------------------------------------------------ |
+| itertools | groupby(it, key=None) | 产出由两个元素组成的元素，形式为(key, group)，其中key是分组标准，group是生成器， 用于产出分组里的元素 |
+|           | reversed(seq)         | 从后向前，倒序产出seq中的元素；seq 必须是序列，或者是实现了 `__reversed__ `特殊方法的对象 |
+| itertools | tee(it, n=2)          | 产出一个由 n 个生成器组成的元组，每个生成器用于单独产出输入的可迭代对象中的元素 |
+|           |                       |                                                              |
 
 
