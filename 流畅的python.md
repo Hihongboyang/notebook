@@ -1856,7 +1856,8 @@ Sequence.register(memoryview)
 
 扫描内存中放不下的数据集时，我们要找到一 种惰性获取数据项的方式，即按需一次获取一个数据项。这就是迭代器模式（Iterator pattern）。
 
-所有生成器都是迭代器，因为生成器完全实现了迭代器接口。根据《设计模式：可复用面向对象软件的基础》一书的定义，迭代器用于从集合中取出元素；而生成器用于“凭空”生成元素。
+> 所有生成器都是迭代器，因为生成器完全实现了迭代器接口。根据《设计模式：可复用面向对象软件的基础》一书的定义，**迭代器用于从集合中取出元素；而生成器用于“凭空”生成元素**。
+>
 
 本章的主要研究内容
 
@@ -2280,5 +2281,92 @@ python中有很多编写好的生成器函数，实现了各种功能，我们�
 |           | reversed(seq)         | 从后向前，倒序产出seq中的元素；seq 必须是序列，或者是实现了 `__reversed__ `特殊方法的对象 |
 | itertools | tee(it, n=2)          | 产出一个由 n 个生成器组成的元组，每个生成器用于单独产出输入的可迭代对象中的元素 |
 |           |                       |                                                              |
+
+
+
+### 新语法yield from
+
+先写一个类似`itertools.chain`的代码
+
+````python
+def chain(*iterables):
+    for it in iterables:
+        for i in it:
+            yield i
+            
+s = 'ABC'
+t = tuple(range(3))
+list(chain(s, t))
+````
+
+而yield from可以替换内层的for循环。
+
+```python
+def chain(*iterables):
+    for i in iterables:
+        yield from i
+
+list(chain(s, t))
+```
+
+但是yield from更重要的的功能是，把内层的生成器直接与外层生成器的客户端联系起来。
+
+### 可迭代的归约函数 
+
+下列表中的函数都接受一个可迭代的对象，然后返回单个结果
+
+| 模块      | 函数                        | 说明                                                         |
+| --------- | --------------------------- | ------------------------------------------------------------ |
+|           | all(it)                     | it 中的所有元素都为真值时返回 True，否则返回 False； all([]) 返回 True |
+|           | any(it)                     | 只要 it 中有元素为真值就返回 True，否则返回 False； any([]) 返回 False |
+|           | max(it, [key=, default=])   | 返回 it 中值最大的元素；*key 是排序函数，与 sorted 函 数中的一样；如果可迭代的对象为空，返回 default |
+|           | min(it, [key=,] [default=]) | 返回 it 中值最小的元素；#key 是排序函数，与 sorted 函 数中的一样；如果可迭代的对象为空，返回 default |
+| functools | reduce(func, it, [initial]) | 把前两个元素传给 func，然后把计算结果和第三个元素传 给 func，以此类推，返回最后的结果；如果提供了 initial，把它当作第一个元素传入 |
+|           | sum(it, start=0)            | it 中所有元素的总和，如果提供可选的 start，会把它加 上（计算浮点数的加法时，可以使用 math.fsum 函数提高 精度） |
+|           |                             |                                                              |
+
+
+
+### iter函数的其他用法
+
+在 Python 中迭代对象 x 时会调用 iter(x)。 但是，iter函数是可以接受两个参数的。其中第一个参数必须是可调用对象，用于不断调用（没有参数），产出各个值；第二个值 是哨符，这是个标记值，当可调用的对象返回这个值时，触发迭代器抛 出 StopIteration 异常，而不产出哨符。 
+
+```python
+def d6():
+    return randint(1, 6)
+
+d6_iter = iter(d6, 1)
+
+for roll in d6_iter:
+    print(roll)
+```
+
+
+
+### 不能将生成器当成协程
+
+- 生成器用于生成供迭代的数据
+- 协程是数据的消费者
+- 不能将两者混为一谈
+- 协程和迭代无关，虽然在协程中会使用yield关键字。
+
+
+
+
+
+## 上下文管理器
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
