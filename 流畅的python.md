@@ -1554,7 +1554,7 @@ collections.abc模块中的抽象基类
 
 标准库中有两个名为 abc 的模块，一个是collections.abc，另一个 abc 模块就是 abc，他定义的是abc.ABC模块。每个抽象基类都依赖这个类，但是不用手动导入。
 
-![1573788415826](E:\存储文档\书籍\biji\assets\1573788415826.png)
+![1573788415826](流畅的python.assets\1573788415826.png)
 
 Iterable、Container、Sized
 
@@ -1615,7 +1615,7 @@ Tombola 抽象基类有四个方法，其中两个是***抽象方法***。
 - .inspect()：返回一个有序元组，由容器中的现有元素构成，不 会修改容器的内容（内部的顺序不保留）。
 
 
-![1573807754000](E:\存储文档\书籍\biji\assets\1573807754000.png)
+![1573807754000](流畅的python.assets\1573807754000.png)
 
 
 
@@ -1657,9 +1657,9 @@ class Tombola(abc.ABC):
 
 异常类的关系。
 
-![1573870457569](E:\存储文档\书籍\biji\assets\1573870457569.png)
+![1573870457569](流畅的python.assets\1573870457569.png)
 
-![1573870470302](E:\存储文档\书籍\biji\assets\1573870470302.png)
+![1573870470302](流畅的python.assets\1573870470302.png)
 
 ### 抽象基类的声明方法
 
@@ -2354,7 +2354,130 @@ for roll in d6_iter:
 
 
 
-## 上下文管理器
+## 上下文管理器和else
+
+### else
+
+不仅仅if语句有else其他几个语句也有else。在这里讲解else是因为没有其他的好的地方了。
+
+```python
+for :
+else:
+
+while:
+else:
+    
+try:
+else:
+```
+
+这些语句中的else语句只有当前面的语句正常结束时才会被执行。换句话说只有当，for while try中没有return break等语句使代码提前结束，就会执行else语句。
+
+### with
+
+上下文管理器包含了两个协议`__enter__`、`__exit__`。一个用于进入上下文管理器时执行，一个用于退出时执行。
+
+```python
+class LookingGlass:
+    def __enter__(self):  # 除了self不传入其他参数
+        import sys
+        self.original_write = sys.stdout.write  # 保存原有的写方法
+        sys.stdout.write = self.reverse_write  # 给予我们自己的写方法
+        return "ASDFGHJKL"
+    
+    def reverse_write(self, text):
+        self.orginal_write(text[::-1])
+        
+    def __exit__(self, exc_type, exc_value, traceback):  # 如果都正常传入的参数是None,None,None。如果抛出异常，那么这三个参数是异常数据。
+        import sys
+        sys.stdout.write = self.original_write
+        if exc_type is ZeroDivisionError:
+            print("Please bo not divide by zero")
+            return True  # 返回True，如果是True以外的值，都会向上冒泡
+```
+
+下面是运行的结果
+
+```python
+from mirror import LookingGlass
+>>> with LookingGlass() as what:  # 在使用这个类之后，__enter__中return语句的值已经赋给what了
+... print('Alice, Kitty and Snowdrop')
+... print(what)
+...
+pordwonS dna yttiK ,ecilA  # 反向字串
+LKJHGFDSA
+>>> what #又正常了
+'ASDFGHJKL'
+
+>>> print('Back to normal.')
+Back to normal.  
+```
+
+
+
+`__exit__`中的三个参数。
+
+exc_type：异常类
+
+exc_value：异常实例，有时会有参数传递给异常构造方法，例如错误消息，这些参数可以使用exc_value.arg获取。
+
+traceback：traceback对象
+
+
+
+### contextlib模块中的工具
+
+closing
+
+ 如果对象提供了 close() 方法， 但没有实现`__enter__/__exit__`协议，那么可以使用这个函数构建上下文管理
+器。 
+
+suppress
+
+构建临时忽略指定异常的上下文管理器。 
+
+@contextmanager
+
+这个装饰器把简单的生成器函数变成上下文管理器， 这样就不用创建类去实现管理器协议了 。
+
+ContextDecorator
+
+这是个基类， 用于定义基于类的上下文管理器。 这种上下文管理器也能用于装饰函数， 在受管理的上下文中运行整个函数。 
+
+ExitStack
+
+这个上下文管理器能进入多个上下文管理器。 with 块结束时， ExitStack 按照后进先出的顺序调用栈中各个上下文管理器的`__exit__` 方法。 如果事先不知道 with 块要进入多少个上下文管理器， 可以使用这个类。  
+
+其中@contextmanager装饰器，用的比较多。
+
+### @contextmanager
+
+@contextmanager 装饰器能减少创建上下文管理器的样板代码量， 因为不用编写一个完整的类， 定义 `__enter__` 和 `__exit__` 方法， 而只需实现有一个 yield 语句的生成器， 生成想让 __enter__ 方法返回的值。 
+
+使用@contextmanager装饰器，yield语句的作用是将函数体分为两部分：yield语句前的代码在with开始时执行，yield后面的代码在with块结束时执行。
+
+```python
+import contextlib
+@contextlib.contextmanager
+def looking_glass():
+    import sys
+    original_write = sys.stdout.write
+    
+    def reverse_write(text):
+        original_write(text[::-1])
+        
+    sys.stdout.write = reverse_write
+    msg = ''
+    try:
+    	yield "ASDFGHJKL"
+    except zeroDivisionError:
+        msg = "Please do not divide by zero"
+    finally:
+        sys.stdout.write = original_write
+        if msg:
+            print(msg)
+
+```
 
 
 
@@ -2362,9 +2485,164 @@ for roll in d6_iter:
 
 
 
+## 协程
+
+### 什么是协程
+
+协程是指一个过程，这个过程与调用方协作，产出由调用方提供的值。生成器可以做为协程使用。
+
+生成器如何进化成协程？
+
+生成器的调用方可以使用 .send(...) 方法发送数据， 发送的数据会成为生成器函数中 yield 表达式的值。  
+
+除了 .send(...) 方法， PEP 342 还添加了 .throw(...) 和 .close()方法： 前者的作用是让调用方抛出异常， 在生成器中处理； 后者的作用是终止生成器。 下一节和 16.5 节会说明这些方法。 PEP 380 对生成器函数的句法做了两处改动， 以便更好地作为协程使用。 
+
+1. 现在， 生成器可以返回一个值； 以前， 如果在生成器中给 return语句提供值， 会抛出 SyntaxError 异常。
+2. 新引入了 yield from 句法， 使用它可以把复杂的生成器重构成小型的嵌套生成器， 省去了之前把生成器的工作委托给子生成器所需的大量样板代码。 
+
+### 要作为协程的生成器是基于了什么功能
+
+协程的简单示例
+
+```python
+def simple_coroutine():
+    print("-> coroutine started")
+    x = yield
+    print("-> coroutine received", x)
+
+    
+>>> my_coro = simple_coroutine()
+>>> my_coro # 查看，返回的是一个生成器
+<generator object simple_coroutine at 0x100c2be10>
+>>> next(my_coro) # 激活
+-> coroutine started
+>>> my_coro.send(42) # 调用yield
+-> coroutine received: 42
+Traceback (most recent call last): # 停止退出了，这需要进行处理
+...
+StopIteration
+```
+
+协程有四种状态，从上面的例子中能够看出来一些，这个状态可以通过inspect.getgeneratorstate()函数确定，该函数返回下面四个状态字符串。
+
+- "GEN_CREATED"  等待开始执行
+- "GEN_RUNNING"  正在执行
+- "GEN_SUSPENDED"   在yield处暂停
+- "GEN_CLOSED"  执行结束
+
+关键的一点是， 协程在 yield 关键字所在的位置暂停执行。 前面说过， 在赋值语句中， = 右边的代码在赋值之前执行。 因此， 对于 b =yield a 这行代码来说， 等到客户端代码再激活协程时才会设定 b 的值。 这种行为要花点时间才能习惯， 不过一定要理解， 这样才能弄懂异步编程中 yield 的作用。
+
+![1584272392513](流畅的python.assets/1584272392513.png)
 
 
 
+一个复杂的示例
+
+```python
+def averager():
+    total = 0.0
+    count = 0
+    average = None
+    while True:  # 不断的计算，直到调用方使用.close()函数将协程终止
+        term = yield average  # yield 表达式用于暂停执行协程，把结果发给调用方；还用于接收调用方后面发给协程的值， 恢复无限循环。
+        total += term
+        count += 1
+        average = total/count
+```
+
+这个实例计算一个移动平均值，不断的输入一个数字，然后不断的计算所有历史数字的平均值。使用协程的好处是， total 和 count 声明为局部变量即可， 无需使用实例属性或闭包在多次调用之间保持上下文。 
+
+
+
+预激一个协程
+
+在使用send()方法之前，一定要先调用next()函数。下面实现一个激活协程的装饰器
+
+```python
+from functools import wraps
+
+def corcoutine(func):
+    @wraps(func)
+    def primer(*args, **kwargs): # 把被装饰的生成器函数替换成这里的prime 函数,调用primer函数时,返回预激后的生成器。
+        gen = func(*args, **kwargs) # 调用被装饰的函数， 获取生成器对象。
+        next(gen)
+        return gen
+    return primer
+```
+
+```python
+@corcoutine # 使用装饰器预激函数
+def averager():
+    total = 0.0
+    count = 0
+    average = None
+    while True:  
+        term = yield average  
+        total += term
+        count += 1
+        average = total/count
+```
+
+很多框架都提供了处理协程的特殊装饰器， 不过不是所有装饰器都用于预激协程， 有些会提供其他服务。
+
+使用 yield from 句法调用协程时， 会自动预激， 因此与示例中的 @coroutine 等装饰器不兼容。 Python 3.4 标准库里的 asyncio.coroutine 装饰器不会预激协程， 因此能兼容 yield from 句法。
+
+### 终止协程和异常处理
+
+协程中未处理的异常会向上冒泡，传给 next 函数或 send 方法的调用方（即触发协程的对象）。 
+
+终止协程的一种方式： 发送某个哨符值，让协程退出。 内置的 None 和 Ellipsis 等常量经常用作哨符值。 例如***.send(StopIteration)。 
+
+从 Python 2.5 开始， 客户代码可以在生成器对象上调用两个方法， 显式地把异常发给协程。
+
+generator.throw(exc_type[, exc_value[, traceback]])  
+
+致使生成器在暂停的 yield 表达式处抛出指定的异常。如果生成器处理了抛出的异常，代码会向前执行到下一个 yield 表达式，而**产出的值会成为调用 generator.throw 方法得到的返回值**。如果生成器没有处理抛出的异常，异常会向上冒泡，传到调用方的上下文中。 
+
+generator.close() 
+
+致使生成器在暂停的 yield 表达式处抛出 GeneratorExit 异常。 如果生成器没有处理这个异常， 或者抛出了 StopIteration 异常（通常是指运行到结尾） ， 调用方不会报错。 如果收到 GeneratorExit 异常， 生成器一定不能产出值， 否则解释器会抛出 RuntimeError 异常。生成器抛出的其他异常会向上冒泡， 传给调用方 
+
+> 我们需要在**协程内部**或者**调用方**来处理这些异常。
+>
+
+```python
+class DemoException(Exception):
+    pass
+def demo_exc_handling():
+    print("-> coroutine started")
+    while True:
+        try:
+            x = yield
+        except DemoException:  # 处理DemoException
+            print("*** DemoException handled. Continuing...")
+        else:  # 正常接收
+            print("-> coroutine reeived:{!r}".format(x))
+    raise RuntimeError("This line should never run.") # 这一行永远不会执行。
+```
+
+只有未处理的异常才会中止那个无限循环， 而一旦出现未处理的异常， 协程会立即终止，也不会执行这一句。
+
+如果不管协程如何结束都想做些清理工作， 要把协程定义体中相关的代码放入 try/finally 块中。
+
+```python
+class DemoException(Exception):
+"""为这次演示定义的异常类型。 """
+def demo_finally():
+	print('-> coroutine started')
+	try:
+		while True:
+			try:
+				x = yield
+			except DemoException:
+				print('*** DemoException handled. Continuing...')
+			else:
+				print('-> coroutine received: {!r}'.format(x))
+	finally:
+        print('-> coroutine ending')
+```
+
+Python 3.3 引入 yield from 结构的主要原因之一与把异常传入嵌套的协程有关。 另一个原因是让协程更方便地返回值。  
 
 
 
