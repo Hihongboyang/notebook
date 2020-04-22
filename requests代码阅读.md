@@ -535,7 +535,7 @@ class Request(object):
         """
 
         if hasattr(data, '__iter__'):
-            data = dict(data)
+            data = dict(data)  # 鸭子类型，是不是可迭代的，是就，转为字典
 
         if hasattr(data, 'items'):
             result = []
