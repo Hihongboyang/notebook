@@ -2479,6 +2479,34 @@ def looking_glass():
 
 ```
 
+一个SQLAlchemy框架下封装会话操作的例子
+
+```python
+from contextlib import contextmanager
+@contextmanager
+def db_session(commit=True):
+    """实现上下文管理器的功能"""
+    session = _get_session()
+    try:
+        yield session  # 在此处暂停，返回会话链接
+        if commit:
+            session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+
+    finally:
+        if session:
+            session.close()
+            
+with db_session(commit=False) as session:  # 获取到会话链接
+    data = session.query(PyOrmModel).filter(PyOrmModel.id == pid)  # 调用
+    for d in data:
+        data_list.append(PyOrmModel.to_json(d))
+
+    return data_list
+```
+
 
 
 
