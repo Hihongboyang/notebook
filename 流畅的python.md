@@ -2619,7 +2619,7 @@ def averager():
 
 协程中未处理的异常会向上冒泡，传给 next 函数或 send 方法的调用方（即触发协程的对象）。 
 
-终止协程的一种方式： 发送某个哨符值，让协程退出。 内置的 None 和 Ellipsis 等常量经常用作哨符值。 例如***.send(StopIteration)。 
+终止协程的一种方式： 发送某个**哨符值**，让协程退出。 内置的 None 和 Ellipsis 等常量经常用作哨符值。 例如***.send(StopIteration)。 
 
 从 Python 2.5 开始， 客户代码可以在生成器对象上调用两个方法， 显式地把异常发给协程。
 
@@ -2671,6 +2671,87 @@ def demo_finally():
 ```
 
 Python 3.3 引入 yield from 结构的主要原因之一与把异常传入嵌套的协程有关。 另一个原因是让协程更方便地返回值。  
+
+
+
+### 让协程返回
+
+首先查看下面的代码，让协程返回值其实就是让数据从return语句返回。同时书中强调，有些协程不产生值，而是在最后返回一个值。
+
+```python
+from collections import namedtuple
+
+Result = namedtuple('Result', 'count average')
+
+def averager():
+    total = 0.0
+    count = 0
+    average = None
+    while True:
+        term = yield
+        if term is None:
+            break   # 当term等于None时停止，这是一个正常停止的过程
+        total += term
+        count += 1
+        average = total/count
+    return Result(count, average)  # 正常停止就会有一个返回值
+```
+
+而要获取这个返回值，就要绕一个圈子了，这个行为好像不是那么优雅，但是确实有一些原因
+
+```python
+coro_avg = average()
+next(coro_avg)
+coro_avg.send(10)
+coro_avg.send(11)
+try:
+	coro_avg.send(None)
+except StopIteration as exc:
+    result = exc.value  #  获取返回值
+result
+```
+
+如上述代码所示，想要获取返回值需要捕获StopIteration错误然后从其中的一个属性值中取出数据。而这个行为和for循环中处理StopIteration错误的方式一致。同样这种方式在yield from中也使用，并且yield from 会自动获取StopIteration的值。
+
+这也是为什么要使用这种方式获取返回值了，为了和之前方式保持行为上的一致（个人理解），并且可以自然的获取返回值，而不用显示的获取。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
