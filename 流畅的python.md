@@ -2849,6 +2849,40 @@ if __name__ == "__main__":
 
 
 
+## 使用期物处理并发
+
+期物这个概念是作者自己取的。这个概念主要指的是Future这个类。作者想要表达的是Future所代表的是未来将要发生的事情。
+
+而Future存在于`concurrent.futures.Future`和`asyncio.Future`这两个类中。
+
+在将协程之前，处理并发的两种方式是多线程和多进程，为此python提供了一个高级的对外封装， `concurrent.futures`模块。这个模块，做了大量封装，简单情况下直接使用就行了
+
+```python
+from concurrent import futures
+
+with futures.ThreadPoolExecutor(workers) as executor:
+    res = executor.map(download_one, args)
+
+```
+
+上面是一个多线程， 还有一个`ProcessPoolExecutor`完成多进程任务。
+
+上述的executor.map方法，在执行时是非阻塞的方法，即他可以立即执行给定的进程数量，多余指定数量的在后面排队，他的返回值是一个生成器，不会阻塞当前线程。但是要回去到其他线程或者进程的返回值时，却是阻塞的，因为他是根据线程开始执行的顺序返回的。如果第一个线程运行比较慢，会影响后面线程的返回。但是也有好处，就是前后的顺序是一致的。
+
+使用`executor.submit`加`futures.as_completed`的组合能够更加灵活地方式提交任务和获取结果，但是他们的结果是乱序的。
+
+```python
+with futures.ThreadPoolExecutor(max_workers=concur_req) as executor:
+    to_do_map = {}
+    for someone in sorted(a_list):
+        future = executor.submit(download_one, someone, somearg)
+        to_do_map[future] = someone
+    done_iter = futures.as_completed(to_do_map)  # 返回的是一个迭代器
+    
+    for future in done_iter:
+        res = future.result()  # 哪个先返回，就先获取那个线程的值
+```
+
 
 
 
