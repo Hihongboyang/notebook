@@ -2883,11 +2883,132 @@ with futures.ThreadPoolExecutor(max_workers=concur_req) as executor:
         res = future.result()  # 哪个先返回，就先获取那个线程的值
 ```
 
+目前来说想要做cpu密集型的任务，还是需要使用多进程的方式进行编程。当然线程可以改为协程进行编程，这正式后面想要讲的内容
 
 
 
+## 使用asyncio处理并发
+
+写这本书的时候，还没有引入async 和await关键字，所以作者使用的是yield from的方式讲解的，但是这种讲解方式说不定能够让我们更深的理解协程的工作原理。
+
+作者首先讲解了一个多线程、协程实现的旋转等待的例子，作者想要讲述多线程和协程两者之间的区别。
+
+```python
+# -*- coding:utf-8 -*-
+import asyncio
+import itertools
+import sys
+
+def spin(msg):
+    write, flush = sys.stdout.write, sys.stdout.flush
+    for char in itertools.cycle('|/-\\'):
+        status = char + ' ' + msg
+        write(status)
+        flush()
+        write('\x08' * len(status))
+        time.sleep(.1)
+        if not signal.go:
+            break
+    write(' ' * len(status) + '\x08' * len(status))
+
+def slow_function():
+    time.sleep(3)
+    return 42
+
+def supervisor():
+    signal = Signal()
+    spinner = threading.Thread(target=spin, args=('thinking', signal))
+    print('spinner object:', spinner)
+    result = slow_function()
+    signal.go = False
+    spinner.join()
+    return result
+
+def main():
+    result = supervisor()
+    print('Answer:', result)
+
+if __name__ == '__main__':
+    main()
+```
 
 
+
+```python
+# -*- coding:utf-8 -*-
+import asyncio
+import itertools
+import sys
+
+async def spin(msg):
+    write, flush = sys.stdout.write, sys.stdout.flush
+    for char in itertools.cycle('|/-\\'):
+        status = char + ' ' + msg
+        write(status)
+        flush()
+        write('\x08' * len(status))
+        try:
+            await asyncio.sleep(.1)
+        except asyncio.CancelledError:
+            break
+
+    write(' ' * len(status) + '\x08' * len(status))
+
+async def slow_function():
+    await asyncio.sleep(3)
+    return 42
+
+async def supervisor():
+    spinner = asyncio.ensure_future(spin("thinking!"))  # 书中写的是asyncio.async但是这个函数已经不用了
+    print('spinner object:', spinner)
+    result = await slow_function()
+    spinner.cancel()
+    return result
+
+def main():
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(supervisor())
+    loop.close()
+    print('Answer:', result)
+
+if __name__ == '__main__':
+    main()
+
+```
+
+上方两个版本一个是使用线程完成的，一个是使用协程完成的。从上面的代码可以看出，线程只需要启动线程就好，但是你无法自由的控制它的启停，想要停止它，必须设置一个标志位，等到去检查的时候才能停止。而协程可以自由的控制他的停止和开始（虽然只是在固定的位置上）。
+
+两个版本的主要区别就在`supervisor()`和`main()`函数上，单独拿这两个函数出来分析一下
+
+```python
+def supervisor():
+    signal = Signal()
+    spinner = threading.Thread(target=spin, args=('thingking!', signal))
+    print('spinner object:', spinner)
+    spinner.start()
+    result = slow_function()
+    signal.go = False
+    spinner.join()
+    return result
+```
+
+```python
+@asyncio.coroutine
+def supervisor():
+    spinner = asyncio.async(spin('thinking!'))
+    print('spinner object:', spinner)
+    result = yield from slow_function()
+    spinner.cancel()
+    return result
+```
+
+async.Task 对象和threading.Thread对象等效。
+
+Task对象用于驱动协程，Thread对象用于调用可调用的对象。
+
+Task对象不要自己动手实例化，而是应该通过把协程传递给asyncio.create_future函数或者loop.create_task函数获得。在这些函数中，会给协程安排运行的时间，而Thread实例则需要调用start方法才能开始。
+
+在上面的代码中，slow_function也是一个协程，我们也使用yield from来调用它
 
 
 
