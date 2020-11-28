@@ -2940,7 +2940,8 @@ import asyncio
 import itertools
 import sys
 
-async def spin(msg):
+@asyncio.coroutine
+def spin(msg):
     write, flush = sys.stdout.write, sys.stdout.flush
     for char in itertools.cycle('|/-\\'):
         status = char + ' ' + msg
@@ -2948,20 +2949,21 @@ async def spin(msg):
         flush()
         write('\x08' * len(status))
         try:
-            await asyncio.sleep(.1)
+            yield from asyncio.sleep(.1)
         except asyncio.CancelledError:
             break
 
     write(' ' * len(status) + '\x08' * len(status))
 
-async def slow_function():
-    await asyncio.sleep(3)
+@asyncio.coroutine
+def slow_function():
+    yield from asyncio.sleep(3)
     return 42
-
-async def supervisor():
+@asyncio.coroutine
+def supervisor():
     spinner = asyncio.ensure_future(spin("thinking!"))  # 书中写的是asyncio.async但是这个函数已经不用了
     print('spinner object:', spinner)
-    result = await slow_function()
+    result = yield from slow_function()
     spinner.cancel()
     return result
 
@@ -2995,7 +2997,7 @@ def supervisor():
 ```python
 @asyncio.coroutine
 def supervisor():
-    spinner = asyncio.async(spin('thinking!'))
+    spinner = asyncio.async(spin('thinking!'))  # 后期版本变为create_future函数
     print('spinner object:', spinner)
     result = yield from slow_function()
     spinner.cancel()
@@ -3008,7 +3010,37 @@ Task对象用于驱动协程，Thread对象用于调用可调用的对象。
 
 Task对象不要自己动手实例化，而是应该通过把协程传递给asyncio.create_future函数或者loop.create_task函数获得。在这些函数中，会给协程安排运行的时间，而Thread实例则需要调用start方法才能开始。
 
-在上面的代码中，slow_function也是一个协程，我们也使用yield from来调用它
+在上面的代码中，slow_function也是一个协程，我们也使用yield from来调用它。
+
+而 supervisor 函数必须由事件循环来调用，因为supervisor已经是最外层的协程了，一个委派生成器（这是我个人理解）。通过主线程来进行控制。
+
+
+
+## asyncio.Future 的说明
+
+Future只是调度执行某物的结果。在asyncio包中`BaseEventLoop.create_task()`接收一个协程，并排定它的运行时间，然后返回一个asyncio.Task实例，Task是Future的一个子类。这和调用`Executor.submit()`方法创建`concurrent.futures.Future`实例是一样的。
+
+asyncio.Future也提供了
+
+```python
+.done()
+.add_done_callback()
+.result()
+```
+
+三个方法。但是result方法不可以设置超时时间，并且result不是一个阻塞方法，当Future还没有运行完毕时，方法不阻塞但是会抛出一个`asyncio.InvalidStateError`异常。
+
+使用yield from会自动处理这些异常，并从Future中获取到返回值。**使用yield from处理期物和使用add_done_callback()处理协程的作用一样：延迟操作结束后，事件循环不会触发回调对象，而是设置期物的返回值；yield from表达式在暂停的协程中生成返回值，恢复执行过程。**
+
+一般情况下Future是与yield from一起使用的，所以不必使用
+
+my_future.add_done_callback()，因为可以直接把想在期物运行结束后执行的操作放在 yield from my_future表达式后面。
+
+my_future.result()，因为yield from从期物中产出的值就是结果  result = yield from my_future
+
+(还不是很理解)
+
+
 
 
 
