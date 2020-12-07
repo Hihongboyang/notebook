@@ -1,4 +1,4 @@
-# 流畅的python
+流畅的python
 
 
 
@@ -3348,7 +3348,7 @@ if __name__ == "__main__":
 
 管理实例属性的描述符应该把值存储在托管实例中。 因此， Python 才为描述符中的那个方法(`__set__`)提供了 instance 参数。
 
-![image-20201207164701225](D:\git_notepad\notebook\流畅的python.assets\image-20201207164701225.png)
+![image-20201207164701225](%E6%B5%81%E7%95%85%E7%9A%84python.assets/image-20201207164701225.png)
 
 查看调用时的内存数据，可以看到在没有赋值之前（weight已经赋值，price还未赋值）托管属性是一个Quantity的实例，赋值之后就不是了。对数据描述符`__set__`的调用发生在具体的赋值时刻，self.weight = weight时。`__set__`会将值赋给apple.weight。
 
@@ -3399,9 +3399,9 @@ if __name__ == "__main__":
 
 再次查看内存
 
-![image-20201207173145478](D:\git_notepad\notebook\流畅的python.assets\image-20201207173145478.png)
+![image-20201207173145478](%E6%B5%81%E7%95%85%E7%9A%84python.assets/image-20201207173145478.png)
 
-![image-20201207173021760](D:\git_notepad\notebook\流畅的python.assets\image-20201207173021760.png)
+![image-20201207173021760](%E6%B5%81%E7%95%85%E7%9A%84python.assets/image-20201207173021760.png)
 
 在刚创建实例后，还未赋值时，price和weight已经存在，应该是`__new__`时创建的。其中报了一个错误，这主要是因为，还未进行赋值，`_Quantity#` 的属性还不存在。从这里也可以看出，price和weight是从`_Quantity#0`中获取属性值的。
 
