@@ -3223,9 +3223,11 @@ class BlackKnight:
 
 `__setattr__(self, name, value)`  尝试设置指定的属性时总会调用这个方法。 点号和 setattr 内置函数会触发这个方法。
 
- 
+
 
 #### `__getattr__`和`__getattribute__`的区别
+
+
 
 `__getattr__`是在找不到属性定义时调用的。
 `__getattribute__`是在获取属性之前调用的，就是当要获取一个属性值之前，会先进入这个方法。
@@ -3245,3 +3247,425 @@ print(user.age)
 print(user.baba)
 ```
 不要重写 `__getattribute__`方法，这会破坏python自己的取值逻辑
+
+
+
+## 属性描述符
+
+什么是属性描述符？
+当实现了`__get__`,`__set__`, `__delete__`三个中的任意一个方法 即称为属性描述符。
+当实现了`__get__`,`__set__`, 方法的时候 称为数据表述符。
+**属性描述符**和**数据表述符** 的区别是当要对属性进行操作时，这些方法的调用顺序是不同的。
+
+```python
+class IntField:
+    def __get__(self, instance, owner):
+        return self.value
+    def __set__(self, instance, value):
+        if not isinstance(value, numbers.Integral):
+            raise ValueError("int value need")
+        if value < 0:
+            raise ValueError("positive value need")
+        self.value = value
+        
+    def __delete__(self, instance):
+        pass
+ 
+ 
+class User:
+    age = IntField()
+```
+举个例子，如上所示
+如果user是User的实例，那么user.age（等价的getattr(user, 'age')）
+首先会调用`__getattribute__`方法。
+如果类定义了`__getattr__`方法，那么在`__getattribute__`的抛出AttributeError的时候会调用到`__getattr__`，而对于描述符（`__get__`）的调用，则是发生在`__getattribute__`内部的。
+
+user.age的调用顺序如下
+1. 如果age是出现在User或者基类的`__dict__`中，且age是数据描述符，那么调用其`__get__`方法
+
+2. 如果age出现在user的`__dict__`中，那么直接返回obj.`__dict__['age']`
+
+3. 如果age出现在User或其基类的`__dict__`中
+    （1）. 如果age是非数据描述符，那么调用其`__dict__`方法， 
+    （2）.返回`__dict__['age']`
+    
+4. 如果User有`__getattr__`方法，调用`__getattr__`方法
+
+5. 抛出AttributeError
+
+上述的这些顺序中，是在我们认识的往常的调用顺序中 加入了对属性描述符和非属性描述符的调用。 其中加入的位置是1，3.1。
+
+让我们梳理一下，第一步，
+当一个**属性是类属性**，并且属于数据描述符，当然我们需要调用它的`__get__`方法。
+如果不是上一步的定义，当然要去实例属性中寻找。
+如果在实例属性中没找到这个实例，就需要向上查找是不是父类中定义了这个属性。
+再判断是不是属性描述符，如果是就调用`__get__`方法。
+如果不是那就调用`__dict__['age']`。
+如果还是取不到值，那么就执行`__getattr__`方法。
+最终没有取到值就报AttributeError
+这里的顺序是和上一节的内容相呼应的。
+
+----------------------------
+
+要完整的描述属性描述符，需要定义几个概念：
+
+1. 描述符类：实现描述符协议的类。
+2. 托管类：把描述符实例声明为类属性的类。（具体使用数据描述符的类）
+3. 描述符实例：描述符类的各个实例，声明为托管类的**类属性**。（托管类中的 类属性）
+4. 托管实例：托管类的实例。
+5. 存储属性：托管实例中存储自身**托管属性的属性**。这种属性与描述符属性不同，描述符属性都是类属性。 
+6. 托管属性：托管类中由描述符实例处理的公开属性， 值存储在储存属性中。   
+
+下面就基于一个实际的例子来说明上述的这些概念
+
+```python
+class Quantity:
+    # 1.描述符类
+    def __init__(self, storage_name):
+        self.storage_name = storeage_name
+    def __set__(self, instance, value):  # 尝试为托管属性赋值时调用，self是描述符实例，instance是托管实例，value是要设置的值
+        if value > 0:
+            instance.__dict__[self.storage_name] = value  # 避免使用setattr以防止循环调用
+        else:
+            raise ValueError('value must be > 0')
+
+class LineItem:
+    # 2.托管类
+    weight = Quantity('weight')  # weight就是 3.描述符实例 
+    price = Quantity('price')
+    
+    def __init__(self, description, weight, price):
+        self.description = description  
+        self.weight = weight  # self.weight 6.托管属性  5.存储属性 （因为他们名称相同）
+        self.price = price  # self.price 6.托管属性  5.存储属性
+    
+    def subtotal(self):
+        return self.weight * self.price
+
+if __name__ == "__main__":
+    apple = LineItem("陕西红富士", 0.5, 12.5)  # apple 4.托管实例
+```
+
+管理实例属性的描述符应该把值存储在托管实例中。 因此， Python 才为描述符中的那个方法(`__set__`)提供了 instance 参数。
+
+![image-20201207164701225](D:\git_notepad\notebook\流畅的python.assets\image-20201207164701225.png)
+
+查看调用时的内存数据，可以看到在没有赋值之前（weight已经赋值，price还未赋值）托管属性是一个Quantity的实例，赋值之后就不是了。对数据描述符`__set__`的调用发生在具体的赋值时刻，self.weight = weight时。`__set__`会将值赋给apple.weight。
+
+
+
+#### 去除需要指定存储属性名的操作
+
+在上方托管类中，使用属性描述符还要指定存储属性的名字，有时候并不知道属性的名字，而且也不够通用。下面就来去掉他。
+
+去掉手动指定的名字，那就需要自动的生成一个名称来用。作者采用了类的名称加数字的形式。
+
+```python
+class Quantity:
+    __counter = 0
+
+    def __init__(self):
+        cls = self.__class__  # 获得的类是Quantity
+        prefix = cls.__name__
+        index = cls.__counter
+        self.storage_name = '_{}#{}'.format(prefix, index)
+        cls.__counter += 1
+
+    def __get__(self, instance, owner):  # owner是托管类（如 LineItem） 的引用，通过描述符从托管类中获取属性时用得到。 
+        return getattr(instance, self.storage_name)  # 因为存储属性和托管属性不再重名，不怕循环调用了
+
+    def __set__(self, instance, value):
+        if value > 0:
+            setattr(instance, self.storage_name, value)
+        else:
+            raise ValueError('value must be > 0')
+
+ class LineItem:
+    weight = Quantity()
+    price = Quantity()
+
+    def __init__(self, description, weight, price):
+        self.description = description
+        self.weight = weight
+        self.price = price
+
+    def subtotal(self):
+        return self.weight * self.price
+
+
+if __name__ == "__main__":
+    apple = LineItem2("陕西红富士", 0.5, 12.5)  # apple 4.托管实例
+```
+
+再次查看内存
+
+![image-20201207173145478](D:\git_notepad\notebook\流畅的python.assets\image-20201207173145478.png)
+
+![image-20201207173021760](D:\git_notepad\notebook\流畅的python.assets\image-20201207173021760.png)
+
+在刚创建实例后，还未赋值时，price和weight已经存在，应该是`__new__`时创建的。其中报了一个错误，这主要是因为，还未进行赋值，`_Quantity#` 的属性还不存在。从这里也可以看出，price和weight是从`_Quantity#0`中获取属性值的。
+
+从这里也可以知道，   **存储属性是`_Quantity#0` `_Quantity#1` 。 而托管属性是 weight 和price等。**
+
+
+
+
+
+
+
+
+### `__init__`和`__new__`的区别
+new是用来控制对象的生成过程，在对象生成之前调用
+init是用来完善对象的，是生成对象之后调用的。如果new方法不返回对象，则不会调用init函数
+
+```python
+class User:
+    def __new__(cls, *args, **kwargs):
+        print("in new")
+        return super().__new__(cls)
+    def __init__(self, name):
+        print("in init")
+        pass
+ if __name__ == "__main__":
+     user = User(name="some")
+```
+
+
+### 自定义元类
+什么是元类，他是用来干什么的？
+元类，总的来说，这是创建类的类。实例对象由类创建，而类则由元类创建。
+type是可以用来检查实例的类型，但是type也可以用来创建类，因为type本身就是元类。
+```python
+def say(self):
+    return "some thing"
+    
+class BaseClass:
+    def answer(self):
+        return "some other"
+        
+User = type("User", (BaseClass, ), {"name": "user", "say": say})
+```
+
+type的第一个参数是类的名称，第二个参数是需要继承的父类，第三个参数则是类中包含的属性和方法的字典。 通过这样我们就能创建一个如下所示的类
+```python
+class User(BaseClass):
+    name = "user"
+    def say(self):
+        return "some thing"
+```
+type 是python中标准的实例化类的元类。那么我们也可以定义自己的元类。
+
+要实现用户自己创建类的过程的元类，需要继承type方法
+```python
+class MetaClass(type):
+    def __new__(cls, *args, **kwargs):
+        return super().__new__(cls, *args, **kwargs)
+
+class User(metaclass=MetaClass):
+    def __init__(self, name):
+        return "some thing"
+    def __str__(self):
+        return "User"
+```
+要使用自定义的元类，需要手动指定metaclass=MetaClass以覆盖掉对type的调用。
+这样子我们就可以将生成实例的功能委托交给元类去处理。在此可以添加一些检查等。
+
+### 基于元类的ORM例子
+```python
+import numbers
+
+class Field:
+    """这里建立这个类，只是为了能够使我们定义的这个类能够有一个统一的名称，以方便进行类型检查。"""
+    pass
+    
+class IntField(Field):
+    """属性描述符"""
+    def __init__(self, db_column, min_value=None, max_value=None):
+        self._value=None
+        self.min_value = min_value
+        self.max_value = max_value
+        self.db_column = db_column
+        
+    def __get__(self, instance, owner):
+       """具体的赋值和获取"""
+       return self._value
+       
+    def __set__(self, instance, value):
+       self._value = value
+   
+   class CharField(Field):
+       """属性描述符"""
+       def __init__(self, db_column, max_length=None):
+           self._value = None
+           self.db_column = db_column
+           self.max_length = max_length
+           
+       def __get__(self, instance, owner):
+           return self._value
+           
+       def __set__(self, instance, value):
+           self._value = value
+           
+   class ModelMetaClass(type):
+       """元类"""
+       def __new__(cls, name, bases, attrs, **kwargs):
+           fields = {}
+           for key, value in attrs.items():
+               if isinstance(value, Field):
+                  fields[key] = value
+           attrs_meta = attrs.get("Meta", None)
+           # 重新组织类的元数据
+           _meta = {}
+           db_table = name.lower()
+           if attrs_meta is not None:
+               table = getattr(attrs_meta, "db_table", None)
+               if table is not None:
+                  db_table = table
+           _meta["db_table"] = db_table
+           attrs["_meta"] = _meta
+           attrs["fields"] = fields
+           del attrs["Meta"]
+           return super().__new__(cls, name, bases, attrs, **kwargs)
+           
+     class BaseModel(metaclass=ModelMetaClass):
+         """这里的类是要映射到数据表的，所以着重需要处理关于数据表的逻辑"""
+         def __init__(self, *args, **kwargs):
+             for key, value in kwargs.items():
+                 setattr(self, key, value)
+             return super().__init__()
+         def save(self):
+             fields = []
+             values = []
+             for key, value in self.fields.items():
+                 db_column = value.db_column
+                 if db_column is None:
+                     db_column = key.lower()
+                 fields.append(db_column)
+                 value = getattr(self, key)
+                 values.append(str(value))
+             sql = "insert {db_table} {{fields}} value({values})".format(db_table=self._meta["db_table"], fields=",".join(fields), values=",".join(values))
+             pass
+     
+     class User(BaseModel):
+         name = CharField(db_column="name", max_length=10)
+         age = IntField(db_column="age", min_value=1, max_value=100)
+         
+         class Meta:
+             db_table = "user"
+
+if __name__ == "__main__":
+    user = User(name="some", age=23)
+    user.save()
+```
+上面的代码除去了类型检查，只保留整体的构建思路
+下面是完整的代码
+
+```python
+import numbers
+
+
+class Field:
+    pass
+
+class IntField(Field):
+    # 数据描述符
+    def __init__(self, db_column, min_value=None, max_value=None):
+        self._value = None
+        self.min_value = min_value
+        self.max_value = max_value
+        self.db_column = db_column
+        if min_value is not None:
+            if not isinstance(min_value, numbers.Integral):
+                raise ValueError("min_value must be int")
+            elif min_value < 0:
+                raise ValueError("min_value must be positive int")
+        if max_value is not None:
+            if not isinstance(max_value, numbers.Integral):
+                raise ValueError("max_value must be int")
+            elif max_value < 0:
+                raise ValueError("max_value must be positive int")
+        if min_value is not None and max_value is not None:
+            if min_value > max_value:
+                raise ValueError("min_value must be smaller than max_value")
+
+    def __get__(self, instance, owner):
+        return self._value
+
+    def __set__(self, instance, value):
+        if not isinstance(value, numbers.Integral):
+            raise ValueError("int value need")
+        if value < self.min_value or value > self.max_value:
+            raise ValueError("value must between min_value and max_value")
+        self._value = value
+
+
+class CharField(Field):
+    def __init__(self, db_column, max_length=None):
+        self._value = None
+        self.db_column = db_column
+        if max_length is None:
+            raise ValueError("you must spcify max_lenth for charfiled")
+        self.max_length = max_length
+
+    def __get__(self, instance, owner):
+        return self._value
+
+    def __set__(self, instance, value):
+        if not isinstance(value, str):
+            raise ValueError("string value need")
+        if len(value) > self.max_length:
+            raise ValueError("value len excess len of max_length")
+        self._value = value
+
+
+class ModelMetaClass(type):
+    def __new__(cls, name, bases, attrs, **kwargs):
+        if name == "BaseModel":
+            return super().__new__(cls, name, bases, attrs, **kwargs)
+        fields = {}
+        for key, value in attrs.items():
+            if isinstance(value, Field):
+                fields[key] = value
+        attrs_meta = attrs.get("Meta", None)
+        _meta = {}
+        db_table = name.lower()
+        if attrs_meta is not None:
+            table = getattr(attrs_meta, "db_table", None)
+            if table is not None:
+                db_table = table
+        _meta["db_table"] = db_table
+        attrs["_meta"] = _meta
+        attrs["fields"] = fields
+        del attrs["Meta"]
+        return super().__new__(cls, name, bases, attrs, **kwargs)
+
+
+class BaseModel(metaclass=ModelMetaClass):
+    def __init__(self, *args, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+        return super().__init__()
+
+    def save(self):
+        fields = []
+        values = []
+        for key, value in self.fields.items():
+            db_column = value.db_column
+            if db_column is None:
+                db_column = key.lower()
+            fields.append(db_column)
+            value = getattr(self, key)
+            values.append(str(value))
+
+        sql = "insert {db_table}({fields}) value({values})".format(db_table=self._meta["db_table"],
+                                                                   fields=",".join(fields), values=",".join(values))
+        pass
+
+class User(BaseModel):
+    name = CharField(db_column="name", max_length=10)
+    age = IntField(db_column="age", min_value=1, max_value=100)
+
+    class Meta:
+        db_table = "user"
+
+```
