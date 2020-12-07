@@ -3050,27 +3050,198 @@ my_future.result()，因为yield from从期物中产出的值就是结果  resul
 
 
 
+## 元类编程
+### property动态属性
+以一个例子开头
+```python
+from datetime import date, datetime
+class User:
+    def __init__(self, name, birthday):
+        self.name = name
+        self.birthday = birthday  # 只设置具体的日期
+        self._age = 0  # 具体的年龄可以通过推算获得
+        
+    @property
+    def age(self):
+        # property将age变为一个属性，可以通过属性的方式对其进行引用
+        return datetime.now().year - self.birthday.year
+    
+    @age.setter
+    def age(self, value):
+       # 于上方相对，这里是对属性值进行设置
+        self._age = value
+        
+        
+if __name__ == "__main__":
+    user = User("some", date(year=1999, month=1, day=1))
+    user.age = 30
+    
+    print(user.age)  # 虽然上方对age进行了设置，但是这里并不是30，因为这里获取的数值是通过计算得到的，并不是直接取的_age的值
+    print(user._age)  # 这里会从_age中取值，所以会打印30
+    
+```
+@property 将函数变为属性描述符
+
+类中的特性（@property），会覆盖实例中的相同名称的属性，使实例中属性无法获取，除非取消类中的特性设置。
+就如上述的例子，即使将`self._age`改为`self.age`,当从实例中获取也是获取不到实例中设置的数值的
+```python
+class User: 
+    def __init__(self, name, birthday): 
+        self.name = name 
+        self.birthday = birthday # 只设置具体的日期 
+        self.age = 0 # 具体的年龄可以通过推算获得
+    # 特性设置如上
+    
+ if __name__ == "__main__":
+    user = User("some", date(year=1999, moth=1, day=1))
+    user.age = 30
+    
+    print(user.age)  # 获取到的age依然是通过计算获得的，因为特性会将实例属性覆盖（这应该是因为调用顺序导致的，下文再详述）
+    
+    User.age = 20  # 如果对age重新赋值，使他不再是property就可以获取到实例属性了
+    user.age = 30
+    print(usr.age)  # 再获取就是30了
+```
+`特性可以使用装饰器的方式来实现，但是本质上property是一个类。函数和类通常可以互换，因为二者都是可调用对象，而且没有实例化对象的new运算符，所以调用构造方法与调用工厂函数没有区别。此外只要能够返回新的可调用对象，代替被装饰的函数，二者都可以作为装饰器使用。`
+
+property的构造方法
+
+```python
+property(fget=None, fset=None, fdel=None, doc=None)
+```
+上面有四个参数，都是可选的，前三个参数接受的都是函数对象，从参数名能够看出功能。
+
+```python
+class LineItem:
+    def __init__(self, description, weight, price):
+        self.description = description
+        self.weight = weight
+        self.price = price
+    
+    def subtotal(self):
+        return self.weight * self.price
+    
+    def get_weight(self):
+        return self.__weight
+        
+    def set_weight(self, value):
+        if value > 0:
+            self.__weight = value
+        else:
+            raise ValueError('value must be > 0')
+    
+    weight = property(get_weight, set_weight)  # 使用property将设置和获取特性的方法包装起来
+```
+ `obj.attr` 这样的表达式不会从 `obj` 开始寻找attr， 而是从 `obj.__class__` 开始， 而且， 仅当类中没有名为`attr`的特性时，Python 才会在 `obj` 实例中寻找。 这条规则不仅适用于特性，还适用于一整类描述符——覆盖型描述符（overriding descriptor）。 
+
+创建一个特性的工厂函数
+```python
+def quantity(storage_name):   
+    def qty_getter(instance):        
+        return instance.__dict__[storage_name]        
+    
+    def qty_setter(instance, value):        
+        if value > 0:            
+            instance.__dict__[storage_name] = value       
+        else:            
+            raise ValueError('value must be > 0')        
+            
+    return property(qty_getter, qty_setter)
+
+```
+这与上面直接使用property创建特性相似，但是需要注意的是参数的设置。instance是要绑定到的实例
+```python
+class LineItem:
+    weight = quantity('weight')
+    price = quantity('price')
+    
+    def __init__(self, description, weight, price):
+        self.description = description 
+        self.weight = weight 
+        self.price = price
+    def subtotal(self):
+        return self.weight * self.price
+```
+从上面的实例就可以看到instance 指代的就是weight和price。到目前为止实现的特性的缺陷就是还需要手动的指定名称。下面要做的就是实现自动的绑定。
+
+实现对特性的删除
+```python
+class BlackKnight:    
+    def __init__(self):        
+         self.members = ['an arm', 'another arm', 'a leg', 'another leg']        
+         self.phrases = ["'Tis but a scratch.", "It's just a flesh wound.",
+         "I'm invincible!", "All right, we'll call it a draw."]    
+     
+     @property    
+     def member(self):        
+         print('next member is:')        
+         return self.members[0]   
+         
+     @member.deleter    
+     def member(self):        
+         text = 'BLACK KNIGHT (loses {})\n-- {}'       
+         print(text.format(self.members.pop(0), self.phrases.pop(0)))
+
+```
+
+### 属性处理中的重要属性和函数
+#### 特殊属性
+`__class__`
+`__dict__`
+`__slots__`
+
+`__class__`对象所属类的引用。即这个属性中存储了此实例 所属类的一个引用，通过这个可以直接获取到类对象。python的一些特殊方法，例如`__getattr__`，只在对象的类中寻找，不在实例中寻找。
+
+`__dict__` 一个映射，存储对象或类的**可写属性**。有此属性的对象，任何时候都能任意设置新属性。
+
+`__slots__`类可以定义这个属性，限制实例能有哪些属性。`__slots__`属性的值是一个**字符串组成的元组**（可以是列表，但最好不是，因为列表是可变的），指明允许有的属性。如果`__slots__`中没有`__dict__`，那么该类的实例只允许有指定名称的属性。
+
+#### 内置函数
+`dir([object])` 列出对象的大多数属性。只会列出重要的属性，可以审查有没有`__dict__`，可以列出`__dict__`中的键但是不列出`__dict__`，也不会列出类的`__mro__`，`__bases__`，`__name__`
+
+`var([object])`返回对象的`__dict__`属性，如果有。
+
+`getattr(object, name[, default])` 从object对象中获取name对应的属性。获取的属性可能来自对象的类或者超类
+
+`hasattr(object, name)` 如果能从object中获得属性name，或者以某种方式获得，则返回True
+
+`setattr(object, name)`   把 object 对象指定属性的值设为 value, 前提是 object 对象能接受那个值。 这个函数可能会创建一个新属性， 或者覆盖现有的属性。
+
+#### 特殊方法
+
+在用户自己定义的类中， 下述特殊方法用于获取、 设置、 删除和列出属性。使用`点号`或内置的 getattr、 hasattr 和 setattr 函数存取属性都会触发下述列表中相应的特殊方法。 
+但是， 直接通过实例的 `__dict__` 属性读写属性不会触发这些特殊方法——如果需要， 通常会使用这种方式跳过特殊方法。
 
 
+`__delattr__(self, name)` 使用del就会调用这个方法。
 
+`__dir__(self)`  把对象传给 dir 函数时调用。
 
+`__getattr__(self, name)`   仅当获取指定的属性失败， 搜索过 obj、 Class 和超类之后调用。找不到属性后才调用。
 
+`__getattribute__(self, name)` 尝试获取指定的属性时总会调用这个方法， 不过， 寻找的属性是特殊属性或特殊方法时除外。  点号与 getattr 和 hasattr 内置函数会触发这个方法。 
 
+`__setattr__(self, name, value)`  尝试设置指定的属性时总会调用这个方法。 点号和 setattr 内置函数会触发这个方法。
 
+ 
 
+#### `__getattr__`和`__getattribute__`的区别
 
+`__getattr__`是在找不到属性定义时调用的。
+`__getattribute__`是在获取属性之前调用的，就是当要获取一个属性值之前，会先进入这个方法。
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```python
+class User:
+    def __init__(self, name, age):
+        self.name = name
+        self.age = age
+    def __getattr__(self, item):
+        return "没有属性{}".format(item)
+    
+    def __getattribute__(self, item):
+        print("获取属性{}".format(item))
+user = User("honmg", 34)
+print(user.age)
+print(user.baba)
+```
+不要重写 `__getattribute__`方法，这会破坏python自己的取值逻辑
