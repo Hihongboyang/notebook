@@ -3050,8 +3050,8 @@ my_future.result()，因为yield from从期物中产出的值就是结果  resul
 
 
 
-## 元类编程
-### property动态属性
+## property动态属性
+
 以一个例子开头
 ```python
 from datetime import date, datetime
@@ -3250,7 +3250,7 @@ print(user.baba)
 
 
 
-## 属性描述符
+### 属性描述符
 
 什么是属性描述符？
 当实现了`__get__`,`__set__`, `__delete__`三个中的任意一个方法 即称为属性描述符。
@@ -3405,267 +3405,272 @@ if __name__ == "__main__":
 
 在刚创建实例后，还未赋值时，price和weight已经存在，应该是`__new__`时创建的。其中报了一个错误，这主要是因为，还未进行赋值，`_Quantity#` 的属性还不存在。从这里也可以看出，price和weight是从`_Quantity#0`中获取属性值的。
 
-从这里也可以知道，   **存储属性是`_Quantity#0` `_Quantity#1` 。 而托管属性是 weight 和price等。**
+从这里也可以知道，   **存储属性是`_Quantity#0` `_Quantity#1` 。 而托管属性是 weight 和price等。*
 
 
 
+### 新的描述符，一个贴近实际的应用
 
-
-
-
-
-### `__init__`和`__new__`的区别
-new是用来控制对象的生成过程，在对象生成之前调用
-init是用来完善对象的，是生成对象之后调用的。如果new方法不返回对象，则不会调用init函数
+在下面这个新的例子中，建立了两个基类AutoStorage和Validated，这两个例子是从之前的例子中分离出来的。AutoStorage实现数据的存取，Validated负责数据的验证，这就是上面Quantity类实现的功能。将他们拆分开是为了能够进行更多的定制和重构，组合。
 
 ```python
-class User:
-    def __new__(cls, *args, **kwargs):
-        print("in new")
-        return super().__new__(cls)
-    def __init__(self, name):
-        print("in init")
-        pass
- if __name__ == "__main__":
-     user = User(name="some")
-```
-
-
-### 自定义元类
-什么是元类，他是用来干什么的？
-元类，总的来说，这是创建类的类。实例对象由类创建，而类则由元类创建。
-type是可以用来检查实例的类型，但是type也可以用来创建类，因为type本身就是元类。
-```python
-def say(self):
-    return "some thing"
+import abc
+class AutoStorage:
+    __counter = 0
     
-class BaseClass:
-    def answer(self):
-        return "some other"
-        
-User = type("User", (BaseClass, ), {"name": "user", "say": say})
-```
-
-type的第一个参数是类的名称，第二个参数是需要继承的父类，第三个参数则是类中包含的属性和方法的字典。 通过这样我们就能创建一个如下所示的类
-```python
-class User(BaseClass):
-    name = "user"
-    def say(self):
-        return "some thing"
-```
-type 是python中标准的实例化类的元类。那么我们也可以定义自己的元类。
-
-要实现用户自己创建类的过程的元类，需要继承type方法
-```python
-class MetaClass(type):
-    def __new__(cls, *args, **kwargs):
-        return super().__new__(cls, *args, **kwargs)
-
-class User(metaclass=MetaClass):
-    def __init__(self, name):
-        return "some thing"
-    def __str__(self):
-        return "User"
-```
-要使用自定义的元类，需要手动指定metaclass=MetaClass以覆盖掉对type的调用。
-这样子我们就可以将生成实例的功能委托交给元类去处理。在此可以添加一些检查等。
-
-### 基于元类的ORM例子
-```python
-import numbers
-
-class Field:
-    """这里建立这个类，只是为了能够使我们定义的这个类能够有一个统一的名称，以方便进行类型检查。"""
-    pass
+    def __init__(self):
+        cls = self.__class__
+        prefix = cls.__name__
+        index = cls.__counter
+        self.storage_name = '_{}#{}'.format(prefix, index)
+        cls.__counter += 1
     
-class IntField(Field):
-    """属性描述符"""
-    def __init__(self, db_column, min_value=None, max_value=None):
-        self._value=None
-        self.min_value = min_value
-        self.max_value = max_value
-        self.db_column = db_column
-        
     def __get__(self, instance, owner):
-       """具体的赋值和获取"""
-       return self._value
-       
+        if instance is None:
+            return self
+        else:
+            return getattr(instance, self.storage_name)
+        
     def __set__(self, instance, value):
-       self._value = value
-   
-   class CharField(Field):
-       """属性描述符"""
-       def __init__(self, db_column, max_length=None):
-           self._value = None
-           self.db_column = db_column
-           self.max_length = max_length
-           
-       def __get__(self, instance, owner):
-           return self._value
-           
-       def __set__(self, instance, value):
-           self._value = value
-           
-   class ModelMetaClass(type):
-       """元类"""
-       def __new__(cls, name, bases, attrs, **kwargs):
-           fields = {}
-           for key, value in attrs.items():
-               if isinstance(value, Field):
-                  fields[key] = value
-           attrs_meta = attrs.get("Meta", None)
-           # 重新组织类的元数据
-           _meta = {}
-           db_table = name.lower()
-           if attrs_meta is not None:
-               table = getattr(attrs_meta, "db_table", None)
-               if table is not None:
-                  db_table = table
-           _meta["db_table"] = db_table
-           attrs["_meta"] = _meta
-           attrs["fields"] = fields
-           del attrs["Meta"]
-           return super().__new__(cls, name, bases, attrs, **kwargs)
-           
-     class BaseModel(metaclass=ModelMetaClass):
-         """这里的类是要映射到数据表的，所以着重需要处理关于数据表的逻辑"""
-         def __init__(self, *args, **kwargs):
-             for key, value in kwargs.items():
-                 setattr(self, key, value)
-             return super().__init__()
-         def save(self):
-             fields = []
-             values = []
-             for key, value in self.fields.items():
-                 db_column = value.db_column
-                 if db_column is None:
-                     db_column = key.lower()
-                 fields.append(db_column)
-                 value = getattr(self, key)
-                 values.append(str(value))
-             sql = "insert {db_table} {{fields}} value({values})".format(db_table=self._meta["db_table"], fields=",".join(fields), values=",".join(values))
-             pass
-     
-     class User(BaseModel):
-         name = CharField(db_column="name", max_length=10)
-         age = IntField(db_column="age", min_value=1, max_value=100)
-         
-         class Meta:
-             db_table = "user"
+        setattr(instance, self.storage_name, value)
 
-if __name__ == "__main__":
-    user = User(name="some", age=23)
-    user.save()
+class Validated(abc.ABC, AutoStorage):
+    
+    def __set__(self, instance, value):
+        value = self.validate(instance, value)
+        super().__set__(instance, value)
+        
+    @abc.abstractmethod
+    def valiate(self, instance, value):
+        """return validated value or raise ValueError"""
+
+class Quantity(Validated):
+    """a number greater than zero"""
+    def validate(self, instance, value):
+        # 实现抽象方法
+        if value <= 0:
+            raise ValueError('value must be > 0')
+        return value
+    
+class NonBlank(Validated):
+    """a string with at least one non-space character"""
+    
+    def validate(self, instance, value):
+        # 实现抽象方法
+        value = value.strip()
+        if len(value) == 0:
+            raise ValueError('value cannot be empty or blank')
+        return raise
 ```
-上面的代码除去了类型检查，只保留整体的构建思路
-下面是完整的代码
+
+下面的这种使用模式就很像django的model的使用。对于具体的验证操作，通过不同的类来实现，这样可以很好的复用代码。这是模板方法的设计模式：一个模板方法用一些抽象的操作定义一个算法（validate）， 而子类将重定义这些操作以提供具体的行为。  
 
 ```python
-import numbers
-
-
-class Field:
-    pass
-
-class IntField(Field):
-    # 数据描述符
-    def __init__(self, db_column, min_value=None, max_value=None):
-        self._value = None
-        self.min_value = min_value
-        self.max_value = max_value
-        self.db_column = db_column
-        if min_value is not None:
-            if not isinstance(min_value, numbers.Integral):
-                raise ValueError("min_value must be int")
-            elif min_value < 0:
-                raise ValueError("min_value must be positive int")
-        if max_value is not None:
-            if not isinstance(max_value, numbers.Integral):
-                raise ValueError("max_value must be int")
-            elif max_value < 0:
-                raise ValueError("max_value must be positive int")
-        if min_value is not None and max_value is not None:
-            if min_value > max_value:
-                raise ValueError("min_value must be smaller than max_value")
-
-    def __get__(self, instance, owner):
-        return self._value
-
-    def __set__(self, instance, value):
-        if not isinstance(value, numbers.Integral):
-            raise ValueError("int value need")
-        if value < self.min_value or value > self.max_value:
-            raise ValueError("value must between min_value and max_value")
-        self._value = value
-
-
-class CharField(Field):
-    def __init__(self, db_column, max_length=None):
-        self._value = None
-        self.db_column = db_column
-        if max_length is None:
-            raise ValueError("you must spcify max_lenth for charfiled")
-        self.max_length = max_length
-
-    def __get__(self, instance, owner):
-        return self._value
-
-    def __set__(self, instance, value):
-        if not isinstance(value, str):
-            raise ValueError("string value need")
-        if len(value) > self.max_length:
-            raise ValueError("value len excess len of max_length")
-        self._value = value
-
-
-class ModelMetaClass(type):
-    def __new__(cls, name, bases, attrs, **kwargs):
-        if name == "BaseModel":
-            return super().__new__(cls, name, bases, attrs, **kwargs)
-        fields = {}
-        for key, value in attrs.items():
-            if isinstance(value, Field):
-                fields[key] = value
-        attrs_meta = attrs.get("Meta", None)
-        _meta = {}
-        db_table = name.lower()
-        if attrs_meta is not None:
-            table = getattr(attrs_meta, "db_table", None)
-            if table is not None:
-                db_table = table
-        _meta["db_table"] = db_table
-        attrs["_meta"] = _meta
-        attrs["fields"] = fields
-        del attrs["Meta"]
-        return super().__new__(cls, name, bases, attrs, **kwargs)
-
-
-class BaseModel(metaclass=ModelMetaClass):
-    def __init__(self, *args, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        return super().__init__()
-
-    def save(self):
-        fields = []
-        values = []
-        for key, value in self.fields.items():
-            db_column = value.db_column
-            if db_column is None:
-                db_column = key.lower()
-            fields.append(db_column)
-            value = getattr(self, key)
-            values.append(str(value))
-
-        sql = "insert {db_table}({fields}) value({values})".format(db_table=self._meta["db_table"],
-                                                                   fields=",".join(fields), values=",".join(values))
-        pass
-
-class User(BaseModel):
-    name = CharField(db_column="name", max_length=10)
-    age = IntField(db_column="age", min_value=1, max_value=100)
-
-    class Meta:
-        db_table = "user"
-
+import some as model
+class LineItem:
+    description = model.NonBlank()
+    weight = model.Quantity()
+    price = model.Quantity()
+    
+    def __init__(self, description, weight, price):
+        self.description = description
+        self.weight = weight
+        self.price = price
+        
+    def subtotal(self):
+        return self.weight * self.price
 ```
+
+
+
+### 覆盖型与非覆盖型描述符
+
+Python 存取属性的方式特别不对等。 通过实例读取属性时，通常返回的是实例中定义的属性； 但是， 如果实例中没有指定的属性，那么会获取类属性。 而为实例中的属性赋值时， 通常会在实例中创建属性， 根本不影响类 。
+
+这应该是就是研究覆盖型和非覆盖型描述符的原因。
+
+```python
+#############展示函数，不重要
+def cls_name(obj_or_cls):
+    cls = type(obj_or_cls)
+    if cls is type:
+        cls = obj_or_cls
+    return cls.__name__.split('.')[-1]
+
+def display(obj):
+    cls = type(obj)
+    if cls is type:
+        return '<class {}>'.format(obj.__name__)
+
+    elif cls in [type(None), int]:
+        return repr(obj)
+
+    else:
+        return '<{} object>'.format(cls_name(obj))
+
+def print_args(name, *args):
+    pseudo_args = ','.join(display(x) for x in args)
+    print('-> {}.__{}__({})'.format(cls_name(args[0]), name, pseudo_args))
+#############展示函数，不重要
+
+class Overriding:
+    def __get__(self, instance, owner):
+        print_args('get', self, instance, owner)
+
+    def __set__(self, instance, value):
+        print_args('set', self, instance, value)
+
+
+class OverridingNoGet:
+    def __set__(self, instance, value):
+        print_args('set', self, instance, value)
+
+
+class NonOverriding:
+    def __get__(self, instance, owner):
+        print_args('get', self, instance, owner)
+
+
+class Managed:
+    over = Overriding()
+    over_no_get = Overriding()
+    non_over = NonOverriding()
+
+    def spam(self):
+        print('-> Manage.spam({})'.format(display(self)))
+```
+
+书中列举了上述的例子来使用，但是我觉得还应该注意这两个方法的参数，还有这些参数所代表的值是什么。
+
+
+
+#### 覆盖型描述符
+
+实现 `__set__` 方法的描述符属于覆盖型描述符， 因为虽然描述符是类属性， 但是实现 `__set__` 方法的话， 会覆盖对实例属性的赋值操作。  主要的现象就是，对实例进行赋值时，都会调用类的`__set__`方法，除非将这个方法覆盖了。
+
+```python
+>>> obj = Managed()
+>>> obj.over
+-> Overriding.__get__(<Overriding object>, <Managed object>, <class Managed>)
+# 第一个参数是Overriding的实例over，第二个是Managed的实例obj，第三个是Managed类
+>>> Managed.over
+-> Overriding.__get__(<Overriding object>, None, <class Managed>)
+# 直接从类中调用，没有Managed对象，第二个参数是None
+>>> obj.over = 7
+-> Overriding.__set__(<Overriding object>, <Managed object>, 7)
+# 与get相似，但是第三个参数变为传入的值
+>>> obj.over
+-> Overriding.__get__(<Overriding object>, <Managed object>, <class Managed>)
+
+>>> obj.__dict__['over'] = 8  # 可以直接通过__dict__赋值，但是在获取时还是要使用__get__
+>>> vars(obj)
+{'over': 8}
+
+>>> obj.over
+-> Overriding.__get__(<Overriding object>, <Managed object>, <class Managed>)
+```
+
+
+
+没有实现`__get__`方法的话，只有在设置值时才会使用描述符覆盖实例的赋值。在获取值时直接从实例中获取，没有`__get__`可以调用。
+
+#### 非覆盖型描述符
+
+没有实现 `__set__` 方法的描述符是非覆盖型描述符。 如果设置了同名的实例属性， 描述符会被遮盖， 致使描述符无法处理那个实例的那个属性。  
+
+
+
+### 方法是描述符
+
+在类中定义的函数属于绑定方法（bound method） ， 因为用户定义的函数都有 `__get__` 方法， 所以依附到类上时， 就相当于描述符。
+
+```python
+>>> obj = Managed()
+>>> obj.spam
+<bound method Managed.spam of <descriptorkinds.Managed object at 0x74c80c>>
+# 绑定方法
+>>> Managed.spam
+<function Managed.spam at 0x734734>
+# 函数
+>>> obj.spam = 7  # 并没有实现__set__方法，所以会被覆盖
+>>> obj.spam
+7
+```
+
+obj.spam 和 Managed.spam 获取的是不同的对象。 与描述符一样， 通过托管类访问时， 函数的 `__get__` 方法会返回自身的引用。 但是， 通过实例访问时， 函数的 `__get__`方法返回的是绑定方法对象： 一种可调用的对象， 里面包装着函数， 并把托管实例（例如 obj） 绑定给函数的第一个参数（即 self） ， 这与 functools.partial 函数的行为一致。 
+
+再列举一个例子
+
+```python
+import collections
+
+class Text(collections.UserString):
+    def __repr__(self):
+        return 'Text({!r})'.format(self.data)
+    
+    def reverse(self):
+        return self[::-1]
+    
+
+>>> word = Text('forward')  # 相当于 word = "something"
+>>> word
+Text('forward')
+
+>>> word.reverse()
+Text('drawrof')
+
+>>> Text.reverse(Text('backward')) # 从类上使用，相当于调用函数
+Text('drawkcab')
+
+>>> type(Text.reverse), type(word.reverse)
+(<class 'function'>, <class 'method'>)
+
+>>> list(map(Text.reverse, ['repaid', (10, 20, 30), Text('stressed')]))
+['diaper', (30, 20, 10), Text('desserts')]
+
+>>> Text.reverse.__get__(word)  # 函数都是非覆盖型描述符。在函数上调用__get__方法时传入实例，得到的是绑定到那个实例上的方法method
+<bound method Text.reverse of Text('forward')>
+
+>>> Text.reverse.__get__(None, Text)  # 调用函数的__get__方法，如果instance，参数的值是None，那么得到的是函数本身
+<function Text.reverse at 0x101244e18>
+
+>>> word.reverse  # 调用Text.reverse.__get__(workd), 返回对应的绑定方法
+<bound method Text.reverse of Text('forward')>
+
+>>> word.reverse.__self__  # 绑定方法有个__self__属性，其值是调用这个方法的实例引用
+Text('forward')
+
+>>> word.reverse.__func__ is Text.reverse  # 绑定方法的 __func__ 属性是依附在托管类上那个原始函数的引用
+True
+```
+
+绑定方法对象还有个 `__call__` 方法， 用于处理真正的调用过程。 这个方法会调用 `__func__` 属性引用的原始函数， 把函数的第一个参数设为绑定方法的 `__self__` 属性。 这就是形参 self 的隐式绑定方式。  
+
+
+
+### 描述符用法建议
+
+####  使用特性，保证简单的使用
+
+特性实现了`__get__` `__set__`方法，还有`__delete__`只需要定义相应的函数即可，即使不指定函数，特性也已经做了错误检查。
+
+#### 只读描述符必须有`__set__`方法
+
+要实现只读属性，必须要实现 `__get__`和`__set__`两个方法，否则，同名属性会覆盖描述符。只读属性的`__set__`只需要抛出AttributeError异常，并提供合适的错误消息。
+
+#### 用于验证的描述符，可以只实现`__set__`方法
+
+#### 仅有`__get__`的描述符可以实现高效缓存
+
+如果只编写了 `__get__` 方法， 那么创建的是非覆盖型描述符。 这种描述符可用于执行某些耗费资源的计算， 然后为实例设置同名属性，缓存结果。 同名实例属性会遮盖描述符， 因此后续访问会直接从实例的`__dict__` 属性中获取值， 而不会再触发描述符的 `__get__`方法。  即假设有一个some.function() 计算后会获得一个结果，可以将这个结果再存储进 some.function中，这样就存储了计算的结果
+
+#### 在实例中特殊方法是不会被覆盖的
+
+
+
+## 元类编程
+
+
+
+
+
