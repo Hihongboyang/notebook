@@ -1533,6 +1533,134 @@ use std::io::*
 - rust会从与模块同名的文件中加载内容
 - 模块树的结构不会变化
 
+## 常用的集合
+
+分配在堆内存上的数据类型，可以动态改变大小。与列表类似吧。只能存放相同类型的数据。
+
+### Vector
+
+`Vec<T>`
+
+- 由标准库提供
+- 可存储多个值
+- 只能存储相同类型的数据
+- 值在内存中连续存放
+
+ 创建Vector
+
+1. Vec::new
+
+   ````rust
+   fn main() {
+       let v: Vec<i32> = Vec::new(); // 为inwei我们使用Vec::new()创建的是空的vector，无法进行类型推断，所以需要指定类型。指定类型是为了分配存储空间。
+   }
+   ````
+
+2. 使用初始值创建`Vec<T>`，使用`vec!`宏
+
+   ```rust
+   fn main() {
+       let v = vec![1,2,3];  // 这里可以推断出类型
+   }
+   ```
+
+更新Vector
+
+使用push向vector中添加元素
+
+```rust
+fn main() {
+    let mut v = Vec::new();
+    
+    v.push(1);  // 这里有上下文类型推断
+    v.push(2);
+    v.push(3);
+}
+```
+
+删除Vector
+
+和struct一样，当Vector离开作用域后，它就会被清理掉，它所有的元素也会被清理掉。
+
+如果Vector里面存储了引用，就需要特殊的处理了
+
+
+
+读取Vector中的元素
+
+两种方式引用Vector中的值：(他们返回的是索引还是所有权？？)
+
+1. 索引
+2. get方法（找不到就返回none）
+
+```rust
+fn main() {
+    let v = vec![1,2,3,4,5];
+    let third: &i32 = &v[2];
+    println!("The third element is {}", third);
+    
+    match v.get(2) {
+        Some(third) => println!("The third element is {}", third),
+        None => println!("There is no third element"),
+    }
+}
+```
+
+所有权和借用规则在Vector中同样适用：不能在同一作用域内同时拥有可变和不可变引用。这主要是为了防止在可变借用中，意外修改Vector后重新分配存储空间导致引用失效。
+
+```rust
+fn main() {
+    let mut v = vec![1,2,3,4,5];
+    let first = &v[0];  // 不可变借用
+    v.push(6);  // 可变借用
+    println!("The first element is {}", first);
+}
+```
+
+遍历Vector
+
+```rust
+fn main() {
+    let v = vec![2,3,4];
+    for i in &v {
+        println!("{}", i);
+    }
+}
+```
+
+```rust
+fn main() {
+    let mut v = vec![2,3,4];
+    for i in &mut v {
+        *i += 20;
+    }
+}
+```
+
+
+
+#### 使用enum来存储多种数据类型
+
+Enum的变体可以附加不同类型的数据
+
+Enum的变体定义在同一个enum类型下
+
+````rust
+enum SpreadsheetCell {
+    Int(i32),
+    Float(f64),
+    Text(String),
+}
+
+fn main() {
+    let now = vec![
+        SpreadsheetCell::Int(3),
+        SpreadsheetCell::Text(String:from("blue")),
+        SpreadsheetCell::Float(10.12),
+    ];
+}
+````
+
 
 
 
