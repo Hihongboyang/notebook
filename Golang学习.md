@@ -1,0 +1,789 @@
+# Golang学习
+
+## 程序基本结构
+
+````go
+package main
+
+import (
+    "fmt"
+)
+
+func main() { // go的括号要求严格，这个左花括号一定要在这个位置
+    somthing...
+}  // 右花括号也一定要在单独一行
+````
+
+## 基本输出
+
+````go
+package main
+
+import (
+    "fmt"
+)
+
+func main() {      
+    fmt.Println()  // 输出时后面自动接空格
+    fmt.Print()  // 输出后不带空格
+    fmt.Printf()  // 格式化输出，第一个参数一定是一个字符串，可以带格式化符号%v。
+    
+    fmt.Printf("my weight on the surface of %v is %v libs.\n", "Earth", 149.0)
+}
+````
+
+### 格式化输出
+
+文本对齐
+
+格式化动词里指定宽度，就可以对齐文本：%4v，就是向左填充到足够4个宽度。
+
+正数，向左填充空格
+
+负数，向右填充空格
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Printf("%-15v $%4v\n", "SpaceX", 94)
+	fmt.Printf("%-15v $%4v\n", "Virgin Galactic", 100)
+}
+```
+
+ 
+
+## 常量和变量
+
+`const` 用来声明常量： 常量的值不可以改变
+
+`var` 用来声明变量： 想要使用变量首先需要进行声明。
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	const lightSpeed = 100000
+	var distance = 19999999
+	fmt.Println(distance/lightSpeed, "seconds")
+
+	distance = 4010000
+	fmt.Println(distance/lightSpeed, "seconds")
+}
+```
+
+可以同时声明多个变量
+
+```go
+var (
+    distance = 50000
+    speed = 999999
+)
+
+var distance, speed = 1000000, 222222
+const houseprice, housenumber = 10000, 678
+```
+
+赋值运算符
+
+````go
+package main
+
+func main() {
+	var weight = 149.0
+	weight = weight * 0.378
+	weight *= 0.378  // 简写形式，和其他语言类似
+}
+````
+
+自增运算
+
+有后缀形式的自增或者自减，但是没有前缀形式的
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	var age = 41
+	age = age + 1
+	age += 1
+	age++ // golang有 age++ 但是没有++age
+	fmt.Println(age)
+}
+
+```
+
+
+
+### 例子
+
+打印随机数
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+)
+
+func main() {
+    rand.Seed(10) // 可以设置随即种子
+	var num = rand.Intn(10) + 1
+	fmt.Println(num)
+
+	num = rand.Intn(10) + 1
+	fmt.Println(num)
+}
+```
+
+作业题
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	var speed = -1
+	const distance = 56000000
+	const time = 28
+	speed = distance / (time * 24)
+	fmt.Printf("飞行速度至少为%v公里/每小时\n", speed)
+}
+```
+
+
+
+## Boolean 类型
+
+其他语言会将，非空值定义为True，空值定义为False。**但是golang不行，只有True为真，False为假。相当于只有True和False才能进行布尔值判断**
+
+### strings.Contains
+
+sting包的Contains函数可以判断某个字符串是否包含另外要给的字符串。
+
+```go
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func main() {
+	fmt.Println("you find yourself in a aimly lit vavern.")
+	var command = "walk outside"
+	var exit = strings.Contains(command, "outside")  // exit就是布尔类型
+	fmt.Println("you leave the cave", exit)
+}
+```
+
+### 比较
+
+````
+== != <= >= > <
+````
+
+### 
+
+### 判断结构if
+
+这与C语言的判断结构比较像
+
+````go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	var command = "go east"
+	if command == "go east" {
+		fmt.Println("you head future up the mountain.")
+	} else if command == "go inside" {
+		fmt.Println("you enter the cave where you live out the rest of your life.")
+	} else {
+		fmt.Println("Didn't quite get that.")
+	}
+}
+
+````
+
+
+
+### 逻辑运算符
+
+`||` `&&` 与C语言中的用法类似，也具有短路特性，当第一条件判断成功时，就不判断后面的条件了
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+
+	fmt.Println("the year is 2100, should you leap?")
+	var year = 2100
+	var leap = year%400 == 0 || (year%4 == 0 && year%100 != 0)
+
+	if leap {
+		fmt.Println("Look before you leap")
+	} else {
+		fmt.Println("keep your feet on the ground.")
+	}
+}
+```
+
+### switch
+
+分支结构
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	fmt.Println("there is a cavern entrance here and a path to the east")
+	var command = "go inside"
+	switch command {
+	case "go east":
+		fmt.Println("you head further up the mountain")
+	case "enter cave", "go inside": // 这里有两个条件可以匹配
+		fmt.Println("you find yourself in a dimly lit cavern.")
+        fallthrough
+	case "read sign":
+		fmt.Println("the sign reads 'No minors") // fallthrough会执行这里
+	default:
+		fmt.Println("didn't quites get that")
+	}
+
+}
+
+```
+
+`fallthrough` 关键字，用来执行下一个和case的body部分。当使用了这个关键字后，会执行剩下所有的case的body。**go没有break关键字跳出switch**
+
+### 循环结构
+
+**for循环**可以有循环条件，也可以没有循环条件
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	var count = 10
+	for count > 0 {
+		fmt.Println(count)
+		time.Sleep(time.Second)
+		count--
+	}
+	fmt.Println("Liftoff!")
+}
+
+```
+
+或者没有循环条件，使用break来结束循环
+
+````go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	var count = 10
+	for {
+        if count <0 {
+            break
+        }
+		fmt.Println(count)
+		time.Sleep(time.Second)
+		count--
+	}
+	fmt.Println("Liftoff!")
+}
+
+````
+
+#### 作业题
+
+````go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+)
+
+func main() {
+	const rand_val = 31
+	var some_val = rand.Intn(100)
+
+	for {
+		if some_val == rand_val {
+			break
+		} else if some_val > rand_val {
+			fmt.Println("your number is bigger than my point")
+		} else {
+			fmt.Println("your number is smaller than my point")
+		}
+
+		some_val = rand.Intn(100)
+
+	}
+	fmt.Println("congratulation!!! your right!")
+}
+````
+
+
+
+### 变量的作用域
+
+变量的作用域和python的作用域区别不大。但是需要的注意的是，在{}之间的作用域，在{}之间声明的变量，作用域就在{}之间。
+
+go语言有一个短声明，`:=`。这个和`python3.8`新加入的符号一样，作用功能也一样，同样是变量声明加赋值，也就是在`if` 和`for`这些不便于使用`var`关键字地方使用，but，go语言中`：=`在其他地方也能够使用，只是不能在全局作用域下使用（暂且这么写）
+
+```go
+var count = 0
+for count = 10; count > 0; count-- {
+    fmt.Println(count)
+}
+fmt.Println(count)
+```
+
+for
+
+```go
+for count:= 10; count>0; count-- {
+    fmt.Println(count)
+}
+```
+
+ if
+
+```go
+if num := rand.Intn(3); num == 0 {
+    fmt.Println("Space Adventures")
+} else if num == 1 {
+    fmt.Println("SpaceX")
+} else {
+    fmt.Println("Virgin Galactic")
+}
+```
+
+switch
+
+````go
+switch num := rand.Intn(10); num {
+    case 0:
+    	fmt.Println("some")
+    case 1:
+    	fmt.Println("some")
+    case 2:
+    	fmt.Println("some")
+    default:
+    	fmt.Println("some")
+}
+````
+
+展示随即日期的课后作业
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+)
+
+var era = "AD"
+
+func main() {
+    var year = rand.Intn(3000) + 1
+	var month = rand.Intn(12) + 1
+	var daysInMonth = 31
+	month = 2
+
+	switch month {
+	case 2:
+		daysInMonth = 28
+	case 4, 6, 9, 11:
+		daysInMonth = 30
+	}
+
+	if (month == 2) && (year%400 == 0 || (year%4 == 0 && year%100 != 0)) {
+		daysInMonth = 29
+	}
+
+	var day = rand.Intn(daysInMonth) + 1
+	fmt.Println(era, year, month, day)
+}
+
+```
+
+课后作业
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"strings"
+)
+
+var era = "AD"
+
+func main() {
+	const distance = 62100000
+	var spaceline string
+	var days = 0
+	var types string
+	var price = 0
+
+	var format_str = "%-18v %5v %-10v $%3v\n"
+
+	fmt.Printf(format_str, "Spaceline", "Days", "Trip type", "Price")
+	fmt.Println(strings.Repeat("=", 40))
+	for count := 0; count < 10; count++ {
+		switch rand.Intn(3) {
+		case 0:
+			{
+				spaceline = "Space Adventures"
+			}
+		case 1:
+			{
+				spaceline = "SpaceX"
+			}
+		case 2:
+			{
+				spaceline = "Virgin Galactic"
+			}
+		}
+
+		days = (distance / (rand.Intn(14) + 16)) / (3600 * 24)
+		price = rand.Intn(50)
+
+		switch rand.Intn(2) {
+		case 0:
+			{
+				types = "Round-way"
+				days *= 2
+				price *= 2
+			}
+		case 1:
+			{
+				types = "One-way"
+			}
+		}
+		fmt.Printf(format_str, spaceline, days, types, price)
+
+	}
+
+}
+```
+
+
+
+### 声明浮点型变量
+
+```go
+some := 3.5
+var some = 3.5
+var some float64 = 3.5 // 双精度
+
+var some float32 = 3.6 // 单精度
+```
+
+浮点类型默认使用的是 float64，除非指定使用float32。
+
+### 零值
+
+go里面每个类型在声明后没有初始化，那么它其中存储的就是零值
+
+````go
+var price float64
+````
+
+
+
+### 格式化符号
+
+使用Print或Println打印浮点类型的时候，默认的行为是尽可能的多显示几位数字。
+
+当想要指定显示多少位的时候，就要使用格式化动词来指定位数了
+
+````
+%5.6f  指出至少显示5位（算数字中的点号），小数位为6位。默认位数不足时使用空格填充
+%*5.6f 也可以使用*来填充它。
+%T  打印数据的类型
+%x  打印十六进制数
+%b  打印每个bit  字节
+%c  输出单个字符
+````
+
+
+
+### go语言的整数类型
+
+```go
+int  // 与硬件架构有关
+uint // 与硬件架构有关
+int8
+uint8
+int16
+uint16
+int32
+uint32
+int64
+uint64
+```
+
+与C相似，go中也提供了整数最大值和最小值的常量值
+
+```go
+math.MaxInt16
+math.MaxInt64
+```
+
+#### 课后作业
+
+```go
+package main
+import (
+	"fmt"
+	"math/rand"
+)
+
+func main() {
+	var coin uint8 = 0
+	var sum uint32 = 0
+	var temp uint32 = 0
+
+	for {
+		switch rand.Intn(3) {
+		case 0:
+			coin = 5
+		case 1:
+			coin = 10
+		case 2:
+			coin = 25
+		}
+		sum += uint32(coin)
+		temp = sum / 100
+		fmt.Printf("余额:$%v.%v\n", temp, sum%100)
+		if temp >= 20 {
+			break
+		}
+	}
+}
+
+```
+
+
+
+### 处理很大的数据
+
+处理那些常规类型处理不料的数据。
+
+big包
+
+对于较大的整数（超过10^18) 使用big.Int
+
+对于任意精度的浮点类型使用 big.Float
+
+对于分数 big.Rat
+
+```go
+package main
+import (
+	"fmt"
+	"math/big"
+)
+
+func main() {
+	var lightsped = big.NewInt(299794)  // 创建了一个 *big.Int 的指针
+	var secondsperday = big.NewInt(86400)
+	fmt.Println(lightsped, secondsperday)
+}
+```
+
+当使用超过int范围的数时，采用如下方法
+
+```go
+var distance = new(big.Int)
+distance.SetString("24000000000000000000000", 10)  // 使用数值形式的字符串存储数据
+```
+
+
+
+````go
+package main
+
+import (
+	"fmt"
+	"math/big"
+)
+
+func main() {
+	var lightsped = big.NewInt(299794)
+	var secondsperday = big.NewInt(86400)
+
+	var distance = new(big.Int)
+	distance.SetString("24000000000000000000000", 10)
+	fmt.Println("Andromeda Galaxy is", distance, "km away")
+
+	var seconds = new(big.Int)
+	seconds.Div(distance, lightsped)
+
+	var days = new(big.Int)
+	days.Div(seconds, secondsperday)
+
+	fmt.Println("That is", days, "days of travel at light speed")
+}
+````
+
+
+
+在go中常量是可以没有类型的
+
+```go
+const some = 2400000000000000 // 这里的常量是没有类型的，这里是untyped
+```
+
+常量使用const关键字来声明，程序里的每个字面值都是常量
+
+这意味着，比较大的数值可以作为字面值 直接使用。
+
+````go
+fmt.Println("Andromeda Galaxy is", 240000000000000/299792/86400, "light days away")
+````
+
+**字面值和常量是在编译阶段完成的。**
+
+
+
+### 多语言文本
+
+字符串声明
+
+```go
+peace := "peace"
+var peace = "peace"
+var peace string = "peace"
+```
+
+使用``表示原始字符串。
+
+```go
+`somthing here \n someother here`  // 其中包含的是什么就输出什么
+"somthing here \n someother here"
+```
+
+
+
+code points， runes，bytes
+
+unicode联盟为每个字符分配的对应的数值，这个数值就是code point
+
+为了表示这样的unicode code point，go语言提供了rune这个类型，它是int32的一个类型的别名。
+
+byte是uint8类型的别名，目的是用于二进制数
+
+
+
+类型别名
+
+类型别名就是同一个类型的另一个名字，比如 rune和int32可以互换
+
+定义类型别名
+
+```go
+type byte = uint8
+type rune = int32
+```
+
+字符
+
+````go
+grade := 'A'
+var grade1 = 'A'
+var grade2 rune = 'A'  // 使用rune就是特地指明了这是一个字符类型
+````
+
+string
+
+这和python中的字符串相似。字符串本身是不能修改的。
+
+```go
+func main() {
+    message := "shalom"
+    c := message[5]
+    fmt.Printf("%c\n", c)
+}
+```
+
+
+
+**range 关键字**
+
+range可以遍历各种集合
+
+```go
+package main
+import "fmt"
+
+func main() {
+    question := "shalom"
+    for i, c := range question {
+        fmt.Printf("%v %c\n", i, c)
+    }
+} 
+```
+
+
+
+
+
+### 类型不能混用
+
+go语言中不同类型的值不能够直接一起使用，需要在使用之前将他们转换为相同类型的数据。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
