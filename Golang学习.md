@@ -771,9 +771,61 @@ func main() {
 
 go语言中不同类型的值不能够直接一起使用，需要在使用之前将他们转换为相同类型的数据。
 
+```go
+age := 41
+marsday := 687
+earthday := 36.55
+fmt.Println("i am", age*earthday/marsday, "years old on mars")  // 这里整型和浮点型也不能混合使用
 
+fmt.Println("i am", float64(age)*earthday/float64(marsday), "years old on mars")
+```
 
+字符串转换
 
+将rune、byte转化位string
+
+```go
+var pi rune = 960
+var alpha rune = 940
+var omega rune = 969
+var bang byte = 33
+
+fmt.Print(string(pi), string(alpha), string(omega), string(bang))
+```
+
+想把数值转换为string，它的值必须能够转化为从code  point，也就是指定的那个数值必须是能够在编码表中有的，没有的数是不能转为字符的。
+
+将数字变为字符串10--》“10”。`strconv`包可以进行这个处理
+
+```go
+str := "launch in T minus" + strconv.Itoa(10) + "seconds."  // Itoa (int to ascii)
+fmt.Println(str)
+```
+
+使用`Sprintf`将数值转化为string，和`Printf`类似，但是会返回一个string
+
+```go
+countdown := 10
+str := fmt.Sprintf("Launch in T minus %v seconds.", countdown)
+fmt.Println(str)
+```
+
+在使用`strconv.Atoi`中可能会出现错误，这个函数在返回时，是会将错误信息返回的，
+
+```go
+countdown, err := strconv.Atoi("10")
+if err != nil { // nil 和None等价
+    fmt.Println(err.Error())
+}
+```
+
+注意：不能使用类型转换将 True False 转换位其他类型。同样也不能用其他类型转换到布尔类型
+
+```
+string(false) 
+bool(1)
+bool("yes")   这些都是不对的
+```
 
 
 
