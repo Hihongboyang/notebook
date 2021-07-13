@@ -829,6 +829,369 @@ bool("yes")   这些都是不对的
 
 
 
+## 函数
+
+### 函数声明
+
+Go在标准库文档中列出了标准库每个包中声明的函数。
+
+使用`func`关键字声明函数
+
+````
+func     Intn      (n int)          int
+关键字    函数名   形参（名称 类型） 返回值和类型
+````
+
+**在Go里，大写字母开头的函数、变量或其他标识符都可以被导出，被其他包引用。**
+
+**而小写字母开头的则不能被其他包引用**
+
+
+
+### 多个参数
+
+```go
+func Unix(sec int64, nsec int64) Time
+```
+
+如果多个参数类型相同，那么该类型只写一次即可
+
+```go
+func Unix(sec, nesci int64) Time
+```
+
+### 多个返回值
+
+多个返回值要用括号括起来。
+
+```go
+func Atoi(s string) (i int, err error)
+```
+
+这里可以将返回值的名称去掉，只保留类型。返回值本身的名称并不重要
+
+```go
+func Atoi(s string) (int,error)
+```
+
+
+
+### 可变参数
+
+类似`Println`可以接收任意数量的参数
+
+```go
+func Println(a...interface{}) (int, error)
+```
+
+`...`表示函数的参数的数量是可变的
+
+参数a的类型为`interface{}`,是一个空接口，意思是所有类型都实现了这个接口。
+
+`...`和`interface{}`一起使用就表示接收任意数量，类型的参数。
+
+练习题
+
+````go
+package main
+
+import (
+	"fmt"
+)
+
+func kelvinToCelsius(k float64) float64 {
+	k -= 273.15
+	return k
+}
+
+func celsiusToFahrenheit(v float64) float64 {
+	return (v * 9.0 / 5.0) + 32.0
+}
+
+func kelvinToFahrenheit(k float64) float64 {
+	return -459.67 + k
+}
+func main() {
+	kelvin := 294.0
+	celsius := kelvinToCelsius(kelvin)
+	fmt.Print(kelvin, "k is ", celsius, "C\n")
+	fmt.Print(kelvinToCelsius(kelvin), "C is ", celsiusToFahrenheit(kelvinToCelsius(kelvin)), "F \n")
+	fmt.Print(kelvin, "k is ", kelvinToFahrenheit(0), "F\n")
+}
+````
+
+
+
+## 方法
+
+与某个类型关联的函数，go中没有类和对象？
+
+### 声明新类型
+
+使用type关键字 声明新类型：
+
+```go
+type celsius float64
+var temperature celsius = 20
+```
+
+celsius 和float64虽然地层是相同的，但是，已经变成两个类型了。所以 也不能同时进行运算。 
+
+### 通过方法为类型添加行为
+
+可以将方法与包中声明的任何类型相关联，但不可以是int、float64等预声明的类型进行关联。
+
+```go
+type celsius float64
+type kelvin float64
+
+func kelvinToCelsius(k kelvin) celsius {
+    return celsius(k - 273.15)
+}
+
+func (k kelvin) celsius() celsius {  // (k kelvin) 就表示celsius这个方法和kelvin这个类型关联， k是类型参数的接收者
+    return celsius(k - 273.15)
+}
+
+```
+
+在方法体中，接受者的行为和其他函数一样
+
+```
+func    (k  kelvin)    celsius()   celsius
+关键字  接收者参数 类型      方法名    返回值和类型
+```
+
+调用方式
+
+`变量.方法`
+
+```go
+type kelvin float64
+var k kelvin = 234.0
+
+c = k.celsius()
+```
+
+
+
+练习题
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+type celsius float64
+type fahrenheit float64
+type kelvin float64
+
+func (k kelvin) kelvinToCelsius() celsius {
+	k -= 273.15
+	return celsius(k)
+}
+
+func (c celsius) celsiusToFahrenheit() fahrenheit {
+	return fahrenheit((c * 9.0 / 5.0) + 32.0)
+}
+
+func (k kelvin) kelvinToFahrenheit() fahrenheit {
+	return fahrenheit(-459.67 + k)
+}
+
+func main() {
+	var k kelvin = 294.0
+	var c celsius = k.kelvinToCelsius()
+	fmt.Print(k, "k is ", c, "C\n")
+	fmt.Print(k.kelvinToCelsius(), "C is ", c.celsiusToFahrenheit(), "F \n")
+	fmt.Print(0, "k is ", kelvin(0).kelvinToFahrenheit(), "F\n")
+}
+```
+
+## 一等函数
+
+在Go里，函数的是头等的，它可以用在整数、字符串或其他类型能用的地方。
+
+- 将函数赋值给变量。
+- 将函数作为参数传递
+- 将函数作为函数的返回值
+
+```go
+package main
+
+import (
+	"math/rand"
+	"fmt"
+)
+
+type kelvin float64
+
+func fakeSensor() kelvin {
+	return kelvin(rand.Intn(151) + 150)
+}
+
+func realSensor() kelvin {
+	return 0
+}
+
+func main() {
+	sensor := fakeSensor // 将函数传给变量
+	fmt.Println(sensor())
+
+	sensor = realSensor
+	fmt.Println(sensor())
+}
+```
+
+
+
+将函数传递 给其他函数
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+type kelvin float64
+
+func measureTemperature(samples int, sensor func() kelvin) { // 注意这里，sensor是变量 kelvin是返回值类型
+	for i := 0; i < samples; i++ {
+		k := sensor()
+		fmt.Printf("%v k\n", k)
+		time.Sleep(time.Second)
+	}
+}
+
+func fakeSensor() kelvin {
+	return kelvin(rand.Intn(151) + 150)
+}
+
+func main() {
+	measureTemperature(3, fakeSensor)
+}
+```
+
+### 声明函数类型
+
+为声明函数类型有助于精简和明确调用者的代码
+
+```go
+type sensor func() kelvin
+/*可以将函数中的参数替换*/
+func measureTemperature(sample int, s func() kelvin)
+
+func measureTemperature(samples int, s sensor)
+```
+
+
+
+### 闭包和匿名函数
+
+匿名函数
+
+```go
+var f = func() {
+	fmt.Println("Dress up for the masquerade")
+}
+
+func main() {
+	f()
+    
+    var f2 = func(message string) {
+		fmt.Println(message)
+	}
+
+	f2("something happened")
+}
+```
+
+因为函数数字字面值需要保留外部作用域的变量引用，所以函数字面值都是闭包的。
+
+闭包就是由于匿名函数封闭并包围作用域中的变量而得名的。
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+type kelvin float64
+type sensor func() kelvin
+
+func realSensor() kelvin {
+	return 0
+}
+
+func calibrate(s sensor, offset kelvin) sensor {
+	return func() kelvin {  // 闭包
+		return s() + offset
+	}
+}
+
+func main() {
+	sensor := calibrate(realSensor, 5)
+	fmt.Println(sensor())
+}
+```
+
+
+
+### 作业题
+
+````go
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+const format = "|%-10.1f|%-10.1f|\n"
+const equal_num = 23
+
+func print_equal(num int) {
+	fmt.Println(strings.Repeat("=", num))
+}
+
+func print_title(val1 string, val2 string) {
+	fmt.Printf("|%-10v|%-10v|\n", val1, val2)
+}
+func print_val(val1 float64, val2 float64) {
+	fmt.Printf(format, val1, val2)
+}
+
+func celsiusToFahrenheit(c float64) float64 {
+	return (c * 9.0 / 5.0) + 32.0
+}
+
+func main() {
+
+	print_equal(equal_num)
+	print_title("C", "F")
+	print_equal(equal_num)
+	for count := -40.0; count < 101.0; count += 5.0 {
+		print_val(float64(count), celsiusToFahrenheit(float64(count)))
+	}
+	print_equal(equal_num)
+
+	print_equal(equal_num)
+	print_title("F", "C")
+	print_equal(equal_num)
+	for count := -40.0; count < 101.0; count += 5.0 {
+		print_val(celsiusToFahrenheit(float64(count)), float64(count))
+	}
+	print_equal(equal_num)
+
+}
+````
+
 
 
 
