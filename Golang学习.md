@@ -1194,6 +1194,425 @@ func main() {
 
 
 
+## 数组
+
+数组是一种**固定长度**的有序的元素集合
+
+```go
+var planets [8]string // 声明了一个长度为8的字符串数组
+```
+
+### 访问数组元素
+
+通过[]来进行访问
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	var planets [5]string
+	planets[0] = "some1"
+	planets[1] = "some2"
+	planets[2] = "some3"
+
+	fmt.Println(planets[0])
+    
+    fmt.Println(len(planets))
+    fmt.Println(planets[3] == "") // 在初始化时，会给所有的元素赋零值，在字符串中，就是空字符串了。所以这里和空字符串比较返回的就是True了
+}
+```
+
+### 访问越界
+
+go在编译阶段会检查是不是有数组越界的情况，但是这仅限于明确的会发生越界的情况，如果使用变量作为引用发生的越界是检查不出来的。
+
+```go
+func main() {
+	var planets [5]string
+	planets[0] = "some1"
+	planets[1] = "some2"
+	planets[2] = "some3"
+
+	fmt.Println(planets[10])
+    
+    var some_index = 10
+    fmt.Println(planets[some_index])
+
+}
+```
+
+### 使用复合字面值初始化数组
+
+复合字面值 是一种给复合类型初始化的紧凑语法。
+
+go的复合字面值语法允许我们只用一步就完成数组声明和数组初始化两个步骤
+
+```go
+dwarfs := [5]string{"Ceres", "Pluto", "Haumea", "Makemake", "Eris"}
+```
+
+可以在复合字面值里使用`...`作为数组的长度，这样go编译器会为你算出数组的元素数量。
+
+```go
+dwarfs := [...]string{"Ceres", "Pluto", "Haumea", "Makemake", "Eris"}
+```
+
+无论何种方式声明，数组的长度都是不可变的。
+
+
+
+### 遍历数组
+
+使用for循环
+
+```go
+func main() {
+	dwarfs := [...]string{"Ceres", "Pluto", "Haumea", "Makemake", "Eris"}
+	for i := 0; i < len(dwarfs); i++ {
+		dwarf := dwarfs[i]
+		fmt.Println(i, dwarf)
+	}
+}
+```
+
+使用range
+
+```go
+func main() {
+	dwarfs := [...]string{"Ceres", "Pluto", "Haumea", "Makemake", "Eris"}
+    for i, dwarf := range dwarfs {
+        fmt.Println(i, dwarf)
+    }
+}
+```
+
+
+
+### 数组的复制
+
+无论是将数组赋值给新的变量还是将它传递给函数，都会产生一个完整的数组副本。相当于深拷贝，C语言中一般是传递指针进行操作的。
+
+```go
+func terraform(planets [8]string) {
+	for i := range planets {
+		planets[i] = "New" + planets[i]  // 这里说明，函数中获得的是一个深拷贝，因为并没有修改原始的数据
+	}
+}
+
+func main() {
+	planets := [...]string{
+		"some1",
+		"some2",
+		"some3",
+		"some4",
+		"some5",
+		"some6",
+		"some7",
+		"some8",
+	}
+
+	terraform(planets)  // planets 要和terraform中声明的数组长度相同，否则会报错
+	fmt.Println(planets)
+}
+
+```
+
+数组的长度也是数组类型的一部分，尝试将长度不符的数组作为参数传递，就会报错
+
+函数一般使用slice而不是数组作为参数。
+
+
+
+多维数组
+
+```go
+func main() {
+	var board [9][9]string  // 声明二维数组
+
+	board[0][0] = "t"
+	board[0][8] = "r" // 赋值
+
+	for column := range board[1] {
+		board[1][column] = "p"
+	}
+	fmt.Println(board)
+}
+```
+
+
+
+### slice切片
+
+假设planets是一个数组，那么planets[0:4]就是一个切片，它切分出了数组里前4个元素
+
+切分数组不会导致数组被修改，它只是创建了指向数组的一个窗口或视图，这种视图就是`slice`类型
+
+和其他语言一样go的切片 也是左闭右开区间。
+
+````go
+func main() {
+	planets := [...]string{
+		"some1",
+		"some2",
+		"some3",
+		"some4",
+		"some5",
+		"some6",
+		"some7",
+		"some8",
+	}
+    some1 := planets[0:4]
+	fmt.Println(some1)
+}
+````
+
+**索引不能是负数**
+
+切分数组的语法也可以用于切分字符串，切分字符串时，索引代表的是字节数而非rune的数字。有些符号可能是两个字节表示一个字符，所以切分这些字符时要格外小心
+
+
+
+### slice的复合字面值
+
+go里面很多函数都倾向于使用slice而不是数组作为参数。想要获得与地层数组相同的元素的slice，那么可以使用[:]进行切分
+
+直接创建数组切片
+
+```go
+[]string // 括号里没有长度
+```
+
+```go
+func main() {
+    dwarfArray := [...]string {
+        "some1","some2","some3","some4","some5",
+    }
+    
+    dwarfSlice := dwarfArray[:]
+    dwarfs := []string {
+        "some1","some2","some3","some4","some5",
+    }
+    fmt.Println(dwarfSlice, dwarfs)
+}
+```
+
+数组切片可以不指定数组的长度，它可以接受任意长度的数组
+
+```go
+func hyperspace(worlds []string) {  // 不需要指定数组的长度
+	for i, j := range worlds {
+		worlds[i] = strings.TrimSpace(j)
+		fmt.Println(worlds[i])
+	}
+}
+
+func main() {
+	planets := []string{"some  ", "  some2  ", "som3 "}
+	hyperspace(planets)
+	fmt.Println(strings.Join(planets, ""))
+}
+```
+
+
+
+### 带有方法的切片
+
+````go
+type StringSlice []string  // 声明一个slice的类型
+
+func (p StringSlice) Sort() {  // 为类型添加方法
+
+}
+
+func main() {
+	planets := []string{
+		"some1", "some2", "some3", "some4",
+	}
+
+	sort.StringSlice(planets).Sort()  // 在sort中就有StringSlice类型，同样有一个sort方法。StringSlice返回的就是一个StringSlice类型的切片
+	fmt.Println(planets)
+}
+````
+
+
+
+### 更大slice
+
+为了获得，一个能不断增长的数组而产生的。
+
+```go
+func main() {
+	planets := []string{
+		"some1", "some2", "some3", "some4",
+	}
+
+	planets = append(planets, "some5", "some6")  // append 向数组中添加了2个元素，这些元素是添加到哪里了？
+	fmt.Println(planets)
+}
+
+```
+
+这里涉及一个新的概念，容量。
+
+长度和容量，分别就表示 实际可以存储多少元素（容量），以及 现在已经存储了多少元素（长度）。
+
+容量 代表切片的底层数组可以容纳数据的量， 长度 是切片的长度。
+
+````go
+len(slice)  // 获取长度
+cap(slice)  // 获取容量
+````
+
+
+
+```go
+func dump(label string, slice []string) {
+	fmt.Printf("%v: length %v, capacity %v %v\n", label, len(slice), cap(slice), slice)
+
+}
+
+func main() {
+	planets := []string{
+		"some1", "some2", "some3", "some4", "some5",
+	}
+
+	dump("planets", planets)
+	dump("planets", planets[1:2])  // 这里会显示 容量是4 为什么？？？
+}
+
+```
+
+当不断向切片中添加值的时候，当超出切片地层数组容量的时候，go会重新生成一个数组（扩大一倍的容量），并将之前的数组值复制到新的数组中。
+
+```go
+func dump(label string, slice []string) {
+	fmt.Printf("%v: length %v, capacity %v %v\n", label, len(slice), cap(slice), slice)
+
+}
+
+func main() {
+	planets := []string{
+		"some1", "some2", "some3", "some4", "some5",
+	}
+
+	planets2 := append(planets, "some22")
+	planets3 := append(planets, "some33", "some33", "some33")
+
+	dump("planets", planets)  // 长度5 容量5
+	dump("planets2", planets2) // 长度6 容量10
+	dump("planets3", planets3) // 长度8 容量10
+    // planets2 和 planets3 是同一个数组，而planets1 是另一个数组了
+}
+```
+
+`slice[0:4:4]`第三个数字表示新建切片的容量，这里可以限制新建数组的容量大小
+
+```go
+func dump(label string, slice []string) {
+	fmt.Printf("%v: length %v, capacity %v %v\n", label, len(slice), cap(slice), slice)
+
+}
+
+func main() {
+	planets := []string{
+		"some1", "some2", "some3", "some4", "some5",
+	}
+
+	planets2 := planets[0:4:4] // 这里限制了切片的大小
+	planets3 := append(planets2, "some33") // 再向切片添加的时候，因为大小的限制，会新建数组
+
+	dump("planets", planets)
+	dump("planets2", planets2)
+	dump("planets3", planets3)
+}
+
+
+	planets2 := planets[0:4] // 取消切片大小限制
+	planets3 := append(planets2, "some33") // !!!再向切片添加的时候，会修改原来数组的值!!!
+
+	dump("planets", planets)
+	dump("planets2", planets2)
+	dump("planets3", planets3)
+```
+
+什么时候使用三切片的操作？ 在只需要切片范围内的数据时，并且在后续添加数据时，会重新创建数组。
+
+### 使用make函数对 slice进行预分配
+
+```go
+make([]string, 0, 10)  // 第一个参数是切片， 第二个参数是长度， 第三个参数是 容量
+						// 如果只有两个参数，第二个参数代表 长度=容量 两个值
+```
+
+```go
+func dump(label string, slice []int) {
+	fmt.Printf("%v: length %v, capacity %v %v\n", label, len(slice), cap(slice), slice)
+}
+
+func main() {
+	dwarfs := make([]int, 0, 10)
+    
+	dump("dwarfs", dwarfs)
+    
+	dwarfs = append(dwarfs, 1, 2, 3, 4, 5)
+    
+	dump("dwarfs", dwarfs)
+}
+```
+
+### 创建接受可变数量参数的函数
+
+```go
+func terraform(prefix string, worlds ...string) []string { // ...作为可变参数收集
+	newWorlds := make([]string, len(worlds))
+	for i := range worlds {
+		newWorlds[i] = prefix + " " + worlds[i] // !!注意!! 对切片的修改，会反映到原始数组上
+	}
+	return newWorlds
+}
+
+func main() {
+	twoWorlds := terraform("New", "Venus", "Mars")
+	fmt.Println(twoWorlds)
+
+	planets := []string{"Venus", "Mars", "Jupiter"}
+	newPlanets := terraform("New", planets...) // 这里的... 类似于python 的序列解包
+	fmt.Println(newPlanets)
+}
+```
+
+`...` 三种用法  
+
+1. 作为函数参数的收集参数
+2. 在实参中作为序列解包用
+3. 在创建数组时，指定根据初始化值，推断出数组数量
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
