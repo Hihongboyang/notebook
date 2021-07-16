@@ -53,6 +53,22 @@ func main() {
 }
 ```
 
+### 格式化符号
+
+使用Print或Println打印浮点类型的时候，默认的行为是尽可能的多显示几位数字。
+
+当想要指定显示多少位的时候，就要使用格式化动词来指定位数了
+
+````
+%5.6f  指出至少显示5位（算数字中的点号），小数位为6位。默认位数不足时使用空格填充
+%*5.6f 也可以使用*来填充它。
+%T  打印数据的类型
+%x  打印十六进制数
+%b  打印每个bit  字节
+%c  输出单个字符
+%v  可以输出任何类型，+v 可以显示更多信息吧
+````
+
  
 
 ## 常量和变量
@@ -528,21 +544,6 @@ var price float64
 ````
 
 
-
-### 格式化符号
-
-使用Print或Println打印浮点类型的时候，默认的行为是尽可能的多显示几位数字。
-
-当想要指定显示多少位的时候，就要使用格式化动词来指定位数了
-
-````
-%5.6f  指出至少显示5位（算数字中的点号），小数位为6位。默认位数不足时使用空格填充
-%*5.6f 也可以使用*来填充它。
-%T  打印数据的类型
-%x  打印十六进制数
-%b  打印每个bit  字节
-%c  输出单个字符
-````
 
 
 
@@ -1766,9 +1767,161 @@ func main() {
 
 
 
+作业题
+
+统计一段话中的单词的频率，然后输出频率大于1的单词
+
+```go
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+func main() {
+	some_text := "As far as eye could reach he saw nothing but the stems of the great plants about him receding in the violet shade, and far overhead the multiple transparency of huge leaves filtering the sunshine to the solemn splendour of twilight in which he walked. Whenever he felt able he ran again; the ground continued soft and springy, covered with the same resilient weed which was the first thing his hands had touched in Malacandra. Once or twice a small red creature scuttled across his path, but otherwise there seemed to be no life stirring in the wood; nothing to fear—except the fact of wandering unprovisioned and alone in a forest of unknown vegetation thousands or millions of miles beyond the reach or knowledge of man."
+
+	count_map := make(map[string]int, len(some_text))
+	for _, t := range strings.Fields(some_text) {
+		count_map[strings.ToLower(strings.Trim(t, ""))]++
+	}
+
+	for k, v := range count_map {
+		if v > 1 {
+			fmt.Printf("%v:%v ", k, v)
+		}
+	}
+	fmt.Println()
+
+}
+
+```
 
 
 
+## struct
+
+为了将分散的零件组成一个完整的结构体，go提供了struct类型。
+
+struct 允许你将不同类型的东西组合在一起。整形+字符串+浮点
+
+声明struct  方法一
+
+```go
+var curiosity struct {
+    lat float64
+    long float64
+} // 声明了一个struct变量
+
+curiosity.lat = -123.0
+curiosity.long = 123.4  // 赋值
+
+fmt.Println(curiosity.lat, curiosity.long)
+```
+
+方法二  使用type，和C语言中类型相似，声明了一个类型
+
+````go
+type location struct {  // 可以声明多个对象
+    lat float64
+    long float64
+}
+
+var spirit location  // 声明一个location类型
+spirit.lat = 234.0
+spirit.long = 579.0
+
+var oppertunity location
+oppertunity.lat = 234.0
+oppertunity.long = 123.4
+````
+
+
+
+### struct初始化
+
+````go
+type location struct {
+    lat, long float64
+}
+
+oppertunity := location {lat: 83.9, long: 123.4}  // 优势是：即使改变struct字段的结构，初始化值也不用变
+oppertunity2 := location {83.9, 123.4}  // 优点就是简单。但是要注意初始化值的顺序，与struct中的值对应
+````
+
+### struct 的复制
+
+在struct复制的时候，也会将其中的值完整的复制给新的变量，形成一个全新的变量。
+
+```go
+type location struct {
+    lat, long float64
+}
+
+oppertunity := location {lat: 83.9, long: 123.4}
+oppertunity2 := oppertunity
+```
+
+
+
+### 由struct组成的slice
+
+比单独使用 字符串和整数要更为紧凑和清晰
+
+```go
+func main() {
+	type location struct {
+		name string
+		lat  float64
+		long float64
+	}
+
+	locations := []location{
+		{name: "Bradbury Landing", lat: -4.534, long: 137.33},
+		{name: "Columbia Memorial Station", lat: -14.23, long: 175.32},
+		{name: "Challenger Memorial Station", lat: -482.3, long: 368.5},
+	}
+	fmt.Println(locations)
+}
+```
+
+### 将struct转为json
+
+导出json需要使用`json.Marshal`这个函数，函数返回两个值，一个是处理后的返回值，一个是是否成功的标志。
+
+```go
+func main() {
+	type location struct {
+		Lat, Long float64
+	}
+
+	locations := []location{
+		{Lat: -4.534, Long: 137.33},
+		{Lat: -14.23, Long: 175.32},
+		{Lat: -482.3, Long: 368.5},
+	}
+
+	bytes, err := json.Marshal(locations)
+	
+	fmt.Println(err)
+	fmt.Println(string(bytes))  // 输出还是要转化为字符串
+
+}
+```
+
+**！！！！！格外要注意的是   Marshal函数只会对struct中被导出的字段进行编码。而只有首字母是大写的struct字段才是可以被导出的！！！！**
+
+go语言中的json包要求struct中的字段必须以大写字母开头，类似CameCase的驼峰命名规范
+
+可以使用字段注明标签，使得json包在进行编码的时候能够按照标签里的样式修改字段名。
+
+```go 
+	type location struct {
+		Lat  float64 `json:"latitude"`  // 这样在编码json的时候就会使用latitude作为名称
+		Long float64 `json:"longitude"`  // 注意 冒号后面不能有空格，需要紧贴名称字符串
+	}
+```
 
 
 
