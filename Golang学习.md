@@ -1593,11 +1593,176 @@ func main() {
 
 
 
+## Map 字典
+
+map是一种哈希类型。类似于python中的字典
+
+### 声明map
+
+```
+map   [string]     int 
+关键字  键的类型   值的类型
+```
+
+```go
+func main() {
+	temperature := map[string]int{
+		"Earth": 15,
+		"Mars":  -65,
+	}  // 声明map
+
+	temp := temperature["Earth"]  // 获取字典的值
+	fmt.Printf("On average the Earth is %v C \n", temp)
+	temperature["Earth"] = 16
+	temperature["Venus"] = 464  // 向字典中加值
+
+	fmt.Println(temperature)
+
+	moon := temperature["Moon"]  // 获取字典中没有的值，返回的应该时int的零值，因为声明时 值为int
+	fmt.Println(moon)
+    
+    if moon, ok := temperature["Moon"]; ok {  // 返回两个值，第一个是返回值，第二个是布尔值，标记是否成功返回
+		fmt.Printf("On average the moon is %v C.\n", moon)
+	} else {
+		fmt.Println("Where is the moon?")
+	}
+}
+```
+
+### map不会被赋值
+
+数组、int、float64等类型在赋值给新变量或传递至函数/方法的时候会创建相应的副本。
+
+但是map不会复制。
+
+```go
+func main() {
+	temperature := map[string]int{
+		"Earth": 15,
+		"Mars":  -65,
+	} // 声明map
+
+	other_some := temperature
+	other_some["Earth"] = 1000  // 同时会修改temperature的值
+
+	fmt.Println(temperature)
+
+	delete(temperature, "Earth") // 删除字典中的值
+	fmt.Println(temperature)
+}
+```
 
 
 
+### 使用make函数对map进行预分配
+
+1. 除非你使用复合字面值来初始化map，否则必须使用内置的make函数来为map分配空间。(突然好像明白，有初始化时，相当于为数据分配了空间，而没有初始化值时，就需要分配空间的函数来分配空间)
+2. 创建map时，make函数可接受一个或两个参数。第二个参数用于为指定数量的key预先分配空间。
+3. 使用make函数创建的map的初始长度为0
+
+```go
+func main() {
+	temperature := make(map[float64]int, 8)
+
+	fmt.Println(temperature)
+    fmt.Println(len(temperature))
+}
+```
+
+一个用map计数的程序
+
+```go
+func main() {
+	temperature := []float64{
+		-28.0, 32.0, -32.0, -29.0, -23.0, -29.0, -28.0, -33.0,
+	}
+
+	frequency := make(map[float64]int)
+
+	for _, t := range temperature {
+		frequency[t]++
+	}
+
+	for t, num := range frequency { // range返回的是键和值
+		fmt.Printf("%+.f occurs %d times \n", t, num)
+	}
+}
+```
 
 
+
+```go
+func main() {
+	temperature := []float64{
+		-28.0, 32.0, -32.0, -29.0, -23.0, -29.0, -28.0, -33.0,
+	}
+
+	frequency := make(map[float64][]float64)
+
+	for _, t := range temperature {
+		g := math.Trunc(t/10) * 10
+		frequency[g] = append(frequency[g], t)
+	}
+
+	for t, num := range frequency { // range返回的是键和值
+		fmt.Printf("%v: %v\n", t, num)
+	}
+}
+```
+
+
+
+### go中没有集合类型
+
+使用map实现一个集合类型。 本质是用map的键值作为集合使用，用值来标记 键有没有出现过。
+
+```go
+func main() {
+	temperature := []float64{
+		-28.0, 32.0, -32.0, -29.0, -23.0, -29.0, -28.0, -33.0,
+	}
+
+	set := make(map[float64]bool)
+	for _, t := range temperature {
+		set[t] = true
+	}
+
+	if set[-28.0] {
+		fmt.Println("set member")
+	}
+
+	fmt.Println(set)
+}
+```
+
+对集合进行排序
+
+```go
+func main() {
+	temperature := []float64{
+		-28.0, 32.0, -32.0, -29.0, -23.0, -29.0, -28.0, -33.0,
+	}
+
+	set := make(map[float64]bool)
+	for _, t := range temperature {
+		set[t] = true
+	}
+
+	if set[-28.0] {
+		fmt.Println("set member")
+	}
+
+	fmt.Println(set)
+
+	unique := make([]float64, 0, len(set))  // 这里新建了一个数组
+	for t := range set {
+		unique = append(unique, t)
+	}
+
+	sort.Float64s(unique)  // 通过对数组的遍历完成对集合 键的遍历
+	fmt.Println(unique)
+}
+```
 
 
 
