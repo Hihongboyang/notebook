@@ -2186,11 +2186,127 @@ func main() {
 
 
 
+## 组合与转发
 
+在面向对象的世界中，对象由更小的对象组合而成。
 
+go通过结构体实现组合（composition）。go提供了"嵌入"（embedding）特性，它可以实现方法的转发（forwarding）。
 
+go语言中没有继承。
 
+首先看一个例子，这些类型全部封装在了一个结构中，但是有可以分成三组。
 
+```go
+type report struct {
+    sol int
+    high, low float64
+    lat, long float64
+}
+```
+
+使用struct再将其中的数据类型再进行封装
+
+```go
+type celsius float64
+
+type report struct {
+    sol  int
+    temperature temperature
+    location    location
+}
+
+type temperature struct { // 分别进行了拆分
+    heigh, low celsius
+}
+
+type location struct {
+    lat, long float64
+}
+```
+
+拆开以后每个字段的复用性就增强了
+
+```go 
+func main() {
+	bradbury := location{-4.5895, 137.4417}
+	t := temperature{high: -1.0, low: -78.0}
+	report := report{
+		sol:         15,
+		temperature: t,
+		location:    bradbury,
+	}
+
+	fmt.Printf("%+v\n", report)  // 在这里每个类型的变量都可以单独返回。
+	fmt.Printf("a balmy %v C\n", report.temperature.high) // 也可以返回其中某些内容，根据路径读取内容也比较直观
+}
+```
+
+如果给temperature类型添加了一个方法
+
+```go
+func (t temperature) average() celsius {
+    return (t.high + t.low) / 2
+}
+func (r report) average() celsius {  // 这是一个转发
+    return r.temperature.average()
+}
+
+t.average() // 我们可以通过temperature类型进行调用
+
+report.temperature.average() // 也可以通过report类型进行调用
+
+report.average() // 通过转发调用子字段的方法
+```
+
+### 转发方法
+
+go可以通过**struct嵌入**来实现方法的转发。在struct中只给定字段类型，不给定字段名称即可。
+
+```go 
+type sol int
+type report struct {
+    sol
+    temperature // 将字段名省略
+    location  // 将字段名省略  这种省略就叫 嵌入
+}
+```
+
+优势是： 在temperature或者lcoation上附加的方法可以直接为report所用。那么没有字段名该如何调用其中的字段呢，直接使用类型名就可以。
+
+```go
+func (t temperature) average() celsius {
+	return (t.high + t.low) / 2
+}
+func (s sol) days(s2 sol) int {
+	days := int(s2 - s)
+	if days < 0 {
+		days = -days
+	}
+	return days
+}
+
+func main() {
+	report := report{sol: 15}
+
+	fmt.Println(report.sol.days(1446))  // 在嵌入类型中，可以通过路径调用方法
+	fmt.Println(report.days(1446))  // 也可以直接调用方法
+}
+```
+
+如果再在location上也加一个days方法呢？
+
+```` go
+func (l location) days(l2 location) int {
+    return 5
+}
+
+fmt.Println(report.days(1446))  // 如此调用是会出错的。
+// 我们需要在report上声明一个days方法才能不出错。其实也就是在report上的方法优先级高
+func (r report) days(s2 sol) int {
+    return r.sol.days(s2)
+}
+fmt.Println(report.days(1446)) // 这样就不报错
+````
 
 
 
