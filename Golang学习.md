@@ -209,11 +209,23 @@ func main() {
 == != <= >= > <
 ````
 
-### 
-
-### 判断结构if
+## 判断结构if
 
 这与C语言的判断结构比较像
+
+```go
+if 布尔表达式 {
+    /* 在布尔表达式为 true 时执行*/
+}
+
+if 布尔表达式 {
+    /* 在布尔表达式为 true 时执行*/
+} else {
+    /* 在布尔表达式为 false 时执行*/
+}
+```
+
+
 
 ````go
 package main
@@ -266,6 +278,25 @@ func main() {
 
 分支结构
 
+switch 语句执行的过程从上至下，直到找到匹配项，匹配项后面也不需要再加 break。
+
+switch 默认情况下 case 最后自带 break 语句，匹配成功后就不会执行其他 case，如果我们需要执行后面的 case，可以使用 `fallthrough`。
+
+```go
+switch var1 {
+    case val1:
+    	...
+    case val2:
+    	...
+    case val3:
+    	...
+    default:
+    	...
+}
+```
+
+
+
 ```go
 package main
 
@@ -294,9 +325,33 @@ func main() {
 
 `fallthrough` 关键字，用来执行下一个和case的body部分。当使用了这个关键字后，会执行剩下所有的case的body。**go没有break关键字跳出switch**
 
-### 循环结构
+## 循环结构
 
 **for循环**可以有循环条件，也可以没有循环条件
+
+for 有3种形式
+
+1. 和C的for一样
+
+```go
+for init; condition; post {
+    pass
+}
+```
+
+2. 和C的while一样
+
+```go
+for condition {}
+```
+
+3. 和C的for(;;)一样，无限循环
+
+```go
+for {}
+```
+
+
 
 ```go
 package main
@@ -373,9 +428,7 @@ func main() {
 }
 ````
 
-
-
-### 变量的作用域
+## 变量的作用域
 
 变量的作用域和python的作用域区别不大。但是需要的注意的是，在{}之间的作用域，在{}之间声明的变量，作用域就在{}之间。
 
@@ -1203,6 +1256,17 @@ func main() {
 var planets [8]string // 声明了一个长度为8的字符串数组
 ```
 
+### 数组的初始化
+
+```go
+var balance = [5]float64{1.0, 2.0, 3.0, 4.0, 5.0}
+balance := [5]float64{1.0, 2.0, 3.0, 4.0, 5.0}
+
+ar balance = [...]float64{1.0, 2.0, 3.0, 4.0, 5.0} // 自己计算长度
+```
+
+
+
 ### 访问数组元素
 
 通过[]来进行访问
@@ -1924,6 +1988,201 @@ go语言中的json包要求struct中的字段必须以大写字母开头，类�
 ```
 
 
+
+## go中没有类
+
+没有class 没有对象，没有继承
+
+go是使用另一种方式实现的， 如给类型添加方法。使用 struct + 方法的形式可以实现类似类的效果
+
+````go
+type coordinate struct { // 声明了一个结构体，用于存储数据的结构
+	d, m, s float64
+	h       rune
+}
+
+func (c coordinate) decimal() float64 { // 为结构体绑定了方法
+	sign := 1.0
+	switch c.h {
+	case 'S', 'W', 's', 'w':
+		sign = -1
+	}
+	return sign * (c.d + c.m/60 + c.s/3600)
+}
+
+func main() {
+	lat := coordinate{4, 35, 22.2, 'S'}  // 声明结构体的变量，也相当于声明了一个“类的实例”
+	long := coordinate{137, 26, 30.12, 'E'}
+	fmt.Println(lat.decimal(), long.decimal())
+}
+
+````
+
+### "构造函数"
+
+可以使用struct复合字面值来初始化你所要的数据（如上面例子中声明struct变量那样）。但是如果struct初始化的时候还要做很多事情，那就可以考虑写一个构造用的函数。通常这个构造函数以new开头 后面接会生成的类型的名字。
+
+```go
+type location struct {
+	lat, long float64
+}
+
+func newLocation(lat, long coordinate) location {  // 构造的函数
+	return location{lat.decimal(), long.decimal()}
+}
+
+func main() {
+	lat := coordinate{4, 35, 22.2, 'S'}
+	long := coordinate{137, 26, 30.12, 'E'}
+	fmt.Println(lat.decimal(), long.decimal())
+    
+	curiosity := newLocation(lat, long)
+	fmt.Println(curiosity)
+
+}
+```
+
+```go
+type location struct {
+	lat, long float64
+}
+
+type world struct {
+	radius float64
+}
+
+func (w world) distance(p1, p2 location) float64 {
+	var s1, c1 float64 = math.Sincos((rad(p1.lat)))
+	var s2, c2 float64 = math.Sincos(rad(p2.lat))
+	var clong float64 = math.Cos(rad(p1.long - p2.long))
+	return w.radius * math.Acos(s1*s2+c1*c2*clong)
+}
+
+func rad(deg float64) float64 {
+	return deg * math.Pi / 180
+}
+
+func main() {
+	var mars = world{radius: 3389.5}
+	var spirit location = location{-14.5684, 175.472636}
+	var opportunity location = location{-1.9462, 354.4734}
+
+	var dist = mars.distance(spirit, opportunity)
+	fmt.Printf("%.2f km\n", dist)
+
+}
+```
+
+
+
+练习题
+
+```go
+type coordinate struct { // 声明了一个结构体，用于存储数据的结构
+	d, m, s float64
+	h       rune
+}
+
+type location struct {
+	lat, long float64
+}
+
+type world struct {
+	radius float64
+}
+
+func (c coordinate) decimal() float64 { // 为结构体绑定了方法
+	sign := 1.0
+	switch c.h {
+	case 'S', 'W', 's', 'w':
+		sign = -1
+	}
+	return sign * (c.d + c.m/60 + c.s/3600)
+}
+
+func newLocation(lat, long coordinate) location { // 构造的函数
+	return location{lat.decimal(), long.decimal()}
+}
+
+func (w world) distance(p1, p2 location) float64 {
+	var s1, c1 float64 = math.Sincos((rad(p1.lat)))
+	var s2, c2 float64 = math.Sincos(rad(p2.lat))
+	var clong float64 = math.Cos(rad(p1.long - p2.long))
+	return w.radius * math.Acos(s1*s2+c1*c2*clong)
+}
+
+func rad(deg float64) float64 {
+	return deg * math.Pi / 180
+}
+
+func main() {
+	var lat coordinate = coordinate{14, 34, 6.2, 'S'}
+	var long coordinate = coordinate{175, 28, 21.5, 'E'}
+	var spirit location = newLocation(lat, long)
+	fmt.Println(spirit)
+
+	lat = coordinate{1, 56, 46.3, 'S'}
+	long = coordinate{354, 28, 24.2, 'E'}
+	opportunity := newLocation(lat, long)
+	fmt.Println(opportunity)
+
+	lat = coordinate{4, 35, 22.2, 'S'}
+	long = coordinate{137, 26, 30.1, 'E'}
+	curiosity := newLocation(lat, long)
+	fmt.Println(curiosity)
+
+	lat = coordinate{4, 35, 0.0, 'S'}
+	long = coordinate{135, 54, 0.0, 'E'}
+	insight := newLocation(lat, long)
+	fmt.Println(insight)
+
+	var location_list = [...]location{spirit, opportunity, curiosity, insight}
+
+	var mars = world{radius: 3389.5}
+	var min_distance float64 = 9999999
+	var max_distance float64 = 0
+	
+    // 计算其中最大值和最小距离
+	for i := 0; i < len(location_list)-1; i++ {
+		for j := i + 1; j < len(location_list); j++ {
+			var dist = mars.distance(location_list[i], location_list[j])
+			if min_distance > dist {
+				min_distance = dist
+			}
+			if max_distance < dist {
+				max_distance = dist
+			}
+		}
+	}
+	fmt.Printf("the max distance is %.3f. the min distance is %.3f\n", max_distance, min_distance)
+	// 计算伦敦和巴黎的距离
+	lat = coordinate{51, 30, 0, 'N'}
+	long = coordinate{0, 8, 0, 'W'}
+	london := newLocation(lat, long)
+
+	lat = coordinate{48, 51, 0, 'N'}
+	long = coordinate{2, 21, 0, 'E'}
+	paris := newLocation(lat, long)
+
+	mars = world{radius: 6371}
+	var dist = mars.distance(london, paris)
+	fmt.Printf("the distance from london to paris is %.3f km\n", dist)
+	
+    // 计算 mount sharp 和 olympus mons的距离
+	lat = coordinate{5, 4, 48, 'S'}
+	long = coordinate{137, 51, 0, 'E'}
+	mount_sharp := newLocation(lat, long)
+
+	lat = coordinate{18, 39, 0, 'N'}
+	long = coordinate{226, 12, 0, 'E'}
+	olympus_mons := newLocation(lat, long)
+
+	mars = world{radius: 3389.5}
+	dist = mars.distance(mount_sharp, olympus_mons)
+	fmt.Printf("the distance from monut sharp to olympus mons is %.3f km\n", dist)
+
+}
+```
 
 
 
