@@ -2555,19 +2555,259 @@ func main() {
 
 
 
+## 指针
+
+指针是指向另一个变量地址的变量。
+
+### `&`和`*`
+
+变量会将他们的值存储在计算机的RAM中，存储位置就是该变量的内存地址
+
+&表示地址操作符，通过&可以获得变量的内存地址，这与C语言相同。
+
+```go
+answer := 42
+fmt.Println(&answer)
+```
+
+&操作符无法获得**字符串**/**数值**/**布尔字面值**的地址
+
+*操作符与&的作用相反，它用来解引用，提供内存地址指向的值。
+
+```go
+answer := 43
+address := &answer // 获得answer的地址， address是一个指针
+fmt.Println(*address) // 对指针解引用
+```
+
+### 指针类型
+
+指针存储的是内存地址。
+
+指针类型和其他普通类型一样，出现在所有需要用到类型的地方，如变量声明、函数参数、返回值类型、结构体字段等。
+
+go的指针和C语言中的指针用法类似。 
+
+如果指针变量持有相同的内存地址，那么他们就是相等的。
+
+与字符串和数值不一样，复合字面量的前面可以放置&
+
+```go
+type person struct {
+    name, superpower string
+    age int
+}
+
+timmy := &person {  // 获取变量的地址
+    name: "Timothy",
+    age: 10,
+}
+
+timmy.superpower = "flying"  // 指针的使用和变量没有什么区别
+（*timmy).superpower = "flying"
+```
 
 
 
+### 指向数组的指针
 
+- 和结构体一样，可以把&放在数组的复合字面值前面来创建指向数组的指针。
 
+  ```go
+  superpowers := &[3]sting{"flight"， "invest", "super strength"}
+  fmt.Println(superpowers[0])
+  fmt.Println(superpowers[1:2])
+  ```
 
+  
 
+- 数组在执行索引或切片操作时会自动解引用。没必要写`(*superpower)[0]`这种形式。
 
+- 与C语言不一样，Go里面数组和指针是两种完全独立的类型。
 
+- Slice和map的复合字面值前面也可以放置&操作符，但是Go并没有为他们提供**自动解引用**的功能。
 
+### 指针的修改
 
+go语言的函数和方法都是按值传递参数的，这意味着函数总是操作于被传递参数的副本。
 
+当指针被传递到函数时，函数将接收传入的内存地址的副本。之后函数可以通过解引用内存地址来修改指针指向的值。
 
+```go
+type person struct {
+	name, superpower string
+	age              int
+}
+
+func bitrhday(p *person) {  // 参数p是将指针的值复制了一份
+	p.age++ // 隐藏了解引用的操作
+}
+
+func main() {
+	rebecca := person{
+		name:       "Rebecca",
+		superpower: "imagination",
+		age:        14,
+	}
+
+	bitrhday(&rebecca)  // 取rebecca中的值
+	fmt.Printf("%+v\n", rebecca)
+}
+```
+
+指针作为方法的接收者和放在参数中，使用是非常相似的。
+
+```go 
+func (p *person) bitrhday() { // 这里变成接收者了
+	p.age++
+}
+
+func main() {
+	rebecca := &person{ // 创建了一个指针
+		name:       "Rebecca",
+		superpower: "imagination",
+		age:        14,
+	}
+
+	rebecca.birthday()
+	fmt.Printf("%+v\n", rebecca)
+}
+```
+
+go语言在变量通过点标记法进行调用的时候，自动使用&取得变量的内存地址。也就是不用写`(&rebecca).birthday()`这种形式也可以运行。即
+
+```go
+func (p *person) bitrhday() { // 这里变成接收者了
+	p.age++
+}
+
+func main() {
+	rebecca := person{ // 这里改称使用变量也可以调用birthday
+	}
+	rebecca.birthday()
+	fmt.Printf("%+v\n", rebecca)
+}
+```
+
+### 内部指针
+
+go提供了 内部指针 这种特性
+
+它用于确定结构体中指定字段的内存地址， &操作符不仅可以获得结构体的内存地址，还可以获得结构体中指定字段的内存地址
+
+```go
+type stats struct {
+    level int
+    endurance, health int
+}
+
+func levelUp(s *stats) {
+    s.level++
+    s.endurance = 42 + (14 * s.level)
+    s.health = 5 * s.endurance
+}
+
+type character struct {
+    name string
+    stats stats
+}
+
+func main() {
+    player := character{name: "Matthias"}
+    levelUp(&player.stats)  // 获取到了结构体中字段的地址
+    fmt.Printf("%+v\n", player.stats)
+}
+```
+
+### 修改数组
+
+于C语言中大致相同
+
+### 隐式指针
+
+go语言中一些内置的集合类型就在暗中使用指针。。
+
+map在被赋值或作为参数传递的时候不会被复制：
+
+- map就是一种隐式指针
+- 这种写法就是多此一举： `func demolish(planets *map[string]string)`
+
+map的键和值都可以是指针类型
+
+需要将指针指向map的情况并不多见
+
+### slice指向数组
+
+slice是指向数组的窗口，实际上slice在指向数组元素的时候也使用了指针。
+
+每个slice内部都会被表示为一个包含3个元素的结构，他们分别指向：
+
+- 数组的指针
+- slice的容量
+- slice的长度
+
+当slice被直接传递至函数或方法时，slice的内部指针就可以对地层数据进行修改
+
+指向slice的显式指针的唯一作用就是修改slice本身：slice的长度、容量以及其起始偏移量。
+
+```go
+func reclassify(planets *[]string) {
+	*planets = (*planets)[0:6]  // 对数组进行修改
+}
+
+func main() {
+	planets := []string{
+		"some1", "some1", "some1", "some1",
+		"some1", "some1", "some1", "some1",
+		"some1", "some1",
+	}
+	reclassify(&planets)  // 将数组的地址传递给函数
+	fmt.Println(planets)
+}
+```
+
+### 指针和接口
+
+```go
+type talker interface {
+	talk() string
+}
+
+func shout(t talker) {
+	louder := strings.ToUpper(t.talk())
+	fmt.Println(louder)
+}
+
+type martian struct {}
+
+func (m martian) talk() string {
+	return "nack nack"
+}
+
+func main() {
+	shout(martian{}) // 这里
+	shout(&martian{})
+}
+
+```
+
+这个例子中无论martian还是指向martian的指针，都可以满足talker接口
+
+如果方法使用的是指针接收者，那么情况会有所不同
+
+```go
+type laser int
+
+func (l *laser) talk() string { // 这里指明要一个指针接收者
+	return strings.Repeat("pew ", int(*l))
+}
+
+func main() {
+	pew := laser(2)
+	shout(&pew)
+    shout(pew) // 这样使用会报错。上面只是说laser指针满足了接口，而不是laser类型。
+}
+```
 
 
 
