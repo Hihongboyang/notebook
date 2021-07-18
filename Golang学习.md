@@ -2310,6 +2310,265 @@ fmt.Println(report.days(1446)) // 这样就不报错
 
 
 
+## 接口
+
+- 接口关注于类型可以做什么，而不是存储了什么。 
+- 接口通过列举类型必须满足的一组方法来进行声明。
+- 在go语言中，不需要显式声明接口。（什么是显式）
+
+```go
+var t interface {  // 声明了一个接口
+    talk string
+}
+
+type martian struct {}
+
+func (m martian) talk() string { // 实现了接口
+	return "nack nack"
+}
+
+type laser int 
+
+func (l laser) talk() string {  // 实现了接口
+	return strings.Repeat("pew ", int(l))
+}
+```
+
+用interface声明了一个接口的形式，然后在类型中按照这个形式声明方法，实现接口。那如果没有声明接口呢？那些方法应该也是可行的。
+
+```go
+func main() {
+    t = martian{}  // 注意这里，并没有声明变量t，而是直接给它赋值
+    fmt.Println(t.talk())  // 然后就可以调用talk方法
+    // t的类型是 var t interface{talk() string}
+    t = laser(3)
+    fmt.Println(t.talk())
+}
+```
+
+如果没有用interface声明接口
+
+```go
+func main() {
+    t := martian{}  // 需要重新声明变量t
+    fmt.Println(t.talk())  // 当然也可以通过t调用talk
+    
+    s := laser(3)  // 但是我们不能复用t了，因为t是martian类型的变量，所以只能重新声明一个变量。
+    fmt.Println(s.talk())
+}
+```
+
+在使用接口之后，变量t相当于可以接受多种类型的变量，但是前提是类型要实现了接口的方法。这相当于实现了多态。
+
+### 接口类型
+
+为了复用，通常会把接口声明为类型。按照约定，接口名称通常以`er`结尾。
+
+```go
+var t interface {
+    talk() string
+}
+==》
+type talker interface { // 声明为类型
+    talk() string
+}
+// 声明为类型后，要使之前的t还能用，要
+var t talker
+
+```
+
+声明一个以接口为参数的函数
+
+```go
+func shout(t talker) {
+    louder := strings.ToUpper(t.talk())
+    fmt.Println(louder)
+}
+
+shout(martian{})  // 直接将变量传入
+shout(laser(2))
+```
+
+这样的好处是，当新添加接口实现后，使用接口的函数不用发生改变。
+
+**接口可以和struct嵌入特性一同使用。同时使用组合和接口将构成非常强大的设计工具。**
+
+```go
+func (l laser) talk() string {
+	return strings.Repeat("pew ", int(l))
+}
+
+func shout(t talker) {
+	louder := strings.ToUpper(t.talk())
+	fmt.Println(louder)
+}
+
+type startship struct {
+	laser  // struct 嵌入
+}
+
+func main() {
+	var s startship = startship{laser(3)}
+	fmt.Println(s.talk())  // s也可以调用talk，相当于starship也实现了talker接口
+	shout(s)
+}
+```
+
+
+
+### 探索接口
+
+go语言的接口都是隐式实现的。
+
+go语言允许在实现代码的过程中，随时创建接口，包括那些已经存在的代码。
+
+```go
+func stardate(t time.Time) float64 {
+	day := float64(t.YearDay())
+	h := float64(t.Hour()) / 24.0
+	return 1000 + day + h
+}
+
+func main() {
+	day := time.Date(2021, 8, 6, 5, 17, 0, 0, time.UTC)
+	fmt.Printf("%.1f Curiosity has landed\n", stardate(day))
+}
+```
+
+这里`time.Time`有两个函数YearDay和Hour。如果我们将它改造为接口
+
+```go
+type stardater interface {
+    YearDay() int
+    Hour() int
+}
+
+func stardate(t stardate) float64 { // 现在就能接收实现了接口的任何类型了
+	day := float64(t.YearDay())
+	h := float64(t.Hour()) / 24.0
+	return 1000 + day + h
+}
+```
+
+### 满足接口
+
+go标准库导出了很多只有单个方法的接口。go通过简单的、通常只有单个方法的接口，来鼓励组合而不是继承，这些接口在各个组件之间形成了简单易懂的界限。
+
+例子  fmt包声明的Stringer接口
+
+```go
+type Stringer interface {
+    String() string
+}
+```
+
+我们声明一个struct
+
+```go
+type location struct {
+    lat, long float64
+}
+
+func (l location) String() string {  // 实现接口
+    return fmt.Sprintf("%v, %v", l.lat, l.long) // 返回一个字符串
+}
+
+func main() {
+    curiosity := location{-1.342, 137.32}
+    fmt.Println(curiosity) // 在打印的时候会调用String接口
+}
+```
+
+作业题
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+)
+
+type coordinate struct {
+	d, m, s float64
+	h       rune
+}
+
+type location struct {
+	Lat, Long coordinate
+	name      string
+}
+
+func (c coordinate) String() string {
+	return fmt.Sprintf("%v° %v' %v″ %c", c.d, c.m, c.s, c.h)
+}
+
+func (c coordinate) decimal() float64 {
+	sign := 1.0
+	switch c.h {
+	case 'S', 'W', 's', 'w':
+		sign = -1
+	}
+	return sign * (c.d + c.m/60 + c.s/3600)
+}
+
+func (c coordinate) MarshalJSON() ([]byte, error) {  // 实现json打印的接口
+	var t = struct {
+		DD  float64 `json:"decimal"`
+		DMS string  `json:"dms"`
+		D   float64 `json:"degrees"`
+		M   float64 `json:"minutes"`
+		S   float64 `json:"seconds"`
+		H   string  `json:"hemisphere"`
+	}{
+		DD:  c.decimal(),
+		DMS: c.String(),
+		D:   c.d,
+		M:   c.m,
+		S:   c.s,
+		H:   string(c.h),
+	}
+	return json.Marshal(t)
+}
+
+func (l location) String() string {  // locaiton打印
+	return fmt.Sprintf("%v is at %v, %v", l.name, l.Lat, l.Long)
+}
+
+func main() {
+	var locate = location{
+		Lat:  coordinate{4, 35, 22.2, 'S'},
+		Long: coordinate{4, 35, 22.2, 'S'},
+		name: "Elysium Plantitia",
+	}
+	bytes, err := json.MarshalIndent(locate, "", "  ")
+
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println(string(bytes))
+}
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
