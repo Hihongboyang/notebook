@@ -2811,5 +2811,382 @@ func main() {
 
 
 
+## nil
+
+nil表示无或者零，这是一个零值。nil会导致panic。
+
+```go
+var nowhere *int
+fmt.Println(nowhere)
+fmt.Println(*nowhere) // 对nil解引用会出错
+```
+
+因为值为nil的接收者和值为nil的参数在行为上并没有区别，所以go语言即使在接收者为nil的情况下，也会继续调用方法
+
+```go
+type person struct {
+    age int
+}
+
+func (p *person) birthday() {
+    p.age++  // 但是这里的使用会报错。nil没有age的属性
+}
+
+func main() {
+    var nobody *person
+    fmt.Println(nobody) // 这里打印出来也是nil
+    nobody.birthday() // 可以正常的调用函数
+}
+```
+
+### nil函数值
+
+```go
+func main() {
+    var fn func(a, b int) int // fn的默认值是nil。这样居然能声明成功！
+    fmt.Println(fn == nil)
+}
+```
+
+所以要检查函数值是否为nil，并在有需要时提供默认行为。
+
+```go
+
+func sortStrings(s []string, less func(i, j int) bool) {
+	if less == nil { // 为less提供默认行为
+		less = func(i, j int) bool {
+			return s[i] < s[j]
+		}
+	}
+	sort.Slice(s, less)
+}
+
+func main() {
+	food := []string{"onion", "carrot", "celery"}
+	sortStrings(food, nil)
+	fmt.Println(food)
+}
+```
+
+### nil slice
+
+如果slice在声明之后没有使用复合字面值或内置的make函数进行初始化，那么它的值就是nil。幸运的是，range、len、append等内置函数都可以正常处理值为nil的slice
+
+```go
+func main() {
+	var soup []string
+	fmt.Println(soup == nil)
+
+	for _, ingredient := range soup { // 虽然是nil但是可以执行，只是没有进入循环
+		fmt.Println(ingredient)
+	}
+
+	fmt.Println(len(soup)) // nil也可以计算长度，长度为0
+	soup = append(soup, "onion", "carrot", "celery")  // 向nil中添加元素它也不会报错
+	fmt.Println(soup)
+}
+```
+
+虽然空slice和值为nil的slice并不相等。但他们通常可以替换使用。
+
+```go
+func mirepoix(ingredients []string) []string {  // 这个函数就对空slice和nil slice有相同的处理逻辑
+    return append(ingredients, "onion", "carrot", "celery")
+}
+```
+
+### nil map
+
+和slice一样，如果map的声明后没有使用复合字面值或内置的make函数进行初始化，那么它的值将会是默认的nil。
+
+```go
+func main() {
+	var soup map[string]int // 声明一个空字典
+	fmt.Println(soup == nil)
+
+	measurement, ok := soup["onion"] // 没有取到onion的值并不会报错，但是会取到空值。
+
+	if ok {
+		fmt.Println(measurement)
+	}
+
+	for ingredient, measurement := range soup { // 这里也不会执行
+		fmt.Println(ingredient, measurement)
+	}
+}
+```
+
+### nil接口
+
+声明为接口的变量在未被赋值时，它的零值是nil。对于一个未被赋值的接口变量来说，它的接口类型和值都是nil，并且变量本身也等于nil。
+
+````go
+func main() {
+    var v interface{}
+    fmt.Printf("%T %v %v\n", v, v, v == nil) // 打印的都会是nil
+}
+````
+
+当接口类型的变量被赋值后，接口就会在内部指向该变量的类型和值。
+
+```go
+var p *int
+v = p
+fmt.Printf("%T %v %v\n", v, v, v == nil)  // 这里类型不为nil但是值还是nil的
+```
+
+go中，接口类型的变量只有在类型和值都为nil时才等于nil。即使接口变量的值仍为nil，但只要它的类型不是nil，那么该变量就不等于nil。
+
+## 错误处理
+
+go语言允许函数和方法同时返回多个值。按照惯例，函数在返回错误时，最后边的返回值应该用来表示错误。调用函数后，应立即检查是否发生错误。
+
+- 如果没有错误发生，那么返回的错误值为nil
+
+```go
+func main() {
+	files, err := ioutil.ReadDir(".")
+	if err != nil { // 立即检查错误
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	for _, file := range files {
+		fmt.Println(file.Name())
+	}
+}
+```
+
+### 如何优雅的处理错误
+
+减少错误处理代码的一种策略是：将程序中不会出错的部分和包含潜在错误隐患的部分隔离开来。
+
+对于不得不返回错误的代码，应尽力简化相应的错误处理代码。
+
+### 文件写入
+
+写入文件的时候可能出错。那如何处理错误？
+
+文件写入完毕后，必须被关闭，确保文件被刷到磁盘上，避免资源的泄漏。类型error用来表示错误。
+
+```go
+
+func proverbs(name string) error {
+	f, err := os.Create(name)
+	if err != nil {  // 创建文件，有没有报错
+		return err
+	}
+
+	_, err = fmt.Fprintln(f, "Error are values")
+	if err != nil {  // 写入语句有没有报错
+		f.Close()
+		return err
+	}
+	_, err = fmt.Fprintln(f, "Don't just check errors, handle them gracefully")
+	f.Close() // 关闭文件
+	return err
+}
+
+func main() {
+	err := proverbs("proverbs.txt")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+```
+
+
+
+### defer关键字
+
+使用defer关键字，go可以确保所有deferred的动作可以在**函数返回**前执行。
+
+```go
+func proverbs(name string) error {
+	f, err := os.Create(name)
+	if err != nil {
+		return err
+	}
+    defer f.Close()  // 使用defer来关闭文件，以保证在函数返回前文件句柄一定是关闭的
+
+	_, err = fmt.Fprintln(f, "Error are values")
+	if err != nil {
+		return err
+	}
+	_, err = fmt.Fprintln(f, "Don't just check errors, handle them gracefully")
+	return err
+}
+```
+
+- defer可以用于任何函数和方法
+- defer并不是专门为错误处理的
+- defer可以消除必须时惦记执行**资源释放的**负担
+
+### 多种错误处理方式
+
+```go
+type safeWriter struct {
+    w  io.Writer
+    err error
+}
+
+func (sw *safeWriter) writeln(s string) {
+    if sw.err != nil { // 检查之前的err是否有错误产生
+        return
+    }
+    _, sw.err = fmt.Fprintln(sw.w, s)  // 如果有错误，是存储在struct的err中的
+}
+```
+
+
+
+### New error
+
+errors 包里有一个构造用New函数，它接收string 作为参数用来表示错误信息，该函数返回error类型。**就是返回自定义的错误信息**。
+
+```go
+func (g *Grid) Set(row, column int, digit int8) error {
+	if !inBounds(row, column) {  // 如果越界就报错
+		return errors.New("out of bounds")
+	}
+	g[row][column] = digit
+	return nil
+}
+```
+
+可以把错误信息当作用户界面的一部分，无论对最终用户还是开发者。
+
+### 按需返回错误
+
+按照惯例，包含错误信息的变量名应以Err开头。
+
+```go
+var (
+    ErrBounds = errors.New("out of bounds")
+    ErrDigit = errors.New("invalid digit")
+)
+
+func (g *Grid) Set(row, column int, digit int8) error {
+    if !inBounds(row, column) {
+        return ErrBounds // 返回错误
+    }
+    g[row][column] = digit
+    return nil
+}
+
+func main() {
+    var g Grid
+    err := g.Set(0, 0, 15)
+    if err != nil {
+        switch err {
+            case ErrBounds, ErrDigit:
+            fmt.Println("les erreurs de parametres")
+            default:
+            fmt.Println(err)
+        }
+    }
+}
+```
+
+errors.New 这个构造函数是使用指针实现的，所以上例中的switch语句比较的是内存地址，而不是错误包含的文字信息。
+
+### 自定义错误类型
+
+error类型是一个内置的接口，任何类型只要实现了返回string的Error()方法就满足了接口。
+
+```go
+type SudokuError []error // 创建错误类型
+
+func (se SudokuError) Error() string { // 实现Error接口
+	var s []string
+	for _, err := range se {
+		s = append(s, err.Error())
+	}
+	return strings.Join(s, ", ")
+}
+```
+
+
+
+### 类型断言
+
+使用类型断言来访问每一种错误
+
+使用类型断言，可以把接口类型转化成地层的具体类型。例如`err.(SudokuError)`
+
+```go
+if err, ok := err.(SudokuError); ok { // 判断错误类型确实是SudokuError，就会把SudokuError赋值给err 
+    fmt.Printf("%d error(s) occurred:\n", len(errs))
+}
+```
+
+
+
+### don't panic
+
+go中没有异常，但是它有panic。当panic发生的时候，程序就会崩溃。
+
+其他语言如果不捕获异常，异常就会向上冒泡。go语言并没有这种机制。
+
+go语言中错误值更加简单灵活：
+
+忽略错误是有意识的决定，从代码上看是显而易见的。
+
+
+
+创建panic
+
+```go
+panic("i forgot my towel")
+```
+
+panic 可以使用任何类型
+
+
+
+### 错误值、panic、os.Exit
+
+- 通常，更推荐使用错误值，其次才是panic
+- panic比os.Exit更好: panic后会执行所有defer的动作，而os.Exit不会
+- 有时候go会panic而不是返回错误值，比如用0做了除数
+
+为了防止panic导致程序崩溃，go提供了recover函数。
+
+但如果defer的函数调用了recover，panic就会停止，程序将继续运行。
+
+```go
+func main() {
+	defer func() {
+		if e := recover(); e != nil {
+			fmt.Println(e)
+		}
+	}()
+	panic("i forgot my towel")  // 会输出i forgot my towel但是程序不会停止，因为recover了
+}
+```
+
+
+
+## gotoutine 并发
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
