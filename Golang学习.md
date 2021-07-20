@@ -3168,9 +3168,308 @@ func main() {
 
 
 
-## gotoutine 并发
+## goroutine 并发
+
+go 中，独立的任务叫做goroutine
+
+- goroutine和其他协程、进程、线程都有相似之处，但是并不完全相同。
+- goroutine的创建效率非常高，go能直接协同多个并发（concurrent）操作。
+- 在go中，无需修改现在顺序式的代码，就可以通过goroutine以并发的方式运行任意数量的任务。
+
+### 启动 goroutine
+
+只需在调用前加一个`go`关键字即可
+
+```go
+func sleepGopher() {
+	time.Sleep(3 * time.Second)
+	fmt.Println("...some...")
+}
+
+func main() {
+	go sleepGopher()  // 相当于创建了一个线程去执行。但是当主进程结束时，也会结束这个子线程
+	time.Sleep(4 * time.Second)  // 主线路
+}
+```
+
+每次使用go关键字都会产生一个 新的goroutine。goroutine的执行顺序时无法确定的，这和其他语言相同。 
+
+```go
+func main() {
+    for i := 0; i < 5; i++ { 
+        go sleepGopher()
+    }
+	time.Sleep(4 * time.Second)  // 主线路
+}
+```
 
 
+
+## 通道 channel
+
+通道可以在多个goroutine之间安全的传值，通道可以作为变量，函数参数、结构体字段等。。创建通道要用`make`函数，并指定其传输数据的类型
+
+```go
+c := make(chan int)
+```
+
+感觉类似于一个队列。
+
+使用左箭头操作符<-向通道发送值 或 从通道接收值
+
+```go
+c <- 99  // 发送值
+r:= <- c // 接收值
+```
+
+
+
+发送操作会等待直到另个以goroutine尝试对该通道进行接收操作为止。
+
+- 执行发送操作的goroutine在等待期间无法执行其他操作
+- 未在等待通道操作的goroutine仍然可以继续自由运行
+
+执行接收操作的goroutine将等待直到另一个goroutine尝试向该通道进行发送操作为止。
+
+（感觉它是只能存储一个值的队列？而且在发送和接收值时会阻塞）
+
+```go
+func sleepGopher(id int, c chan int) {
+	time.Sleep(3 * time.Second)
+	fmt.Println("...", id, "...")
+	c <- id
+}
+
+func main() {
+	c := make(chan int)
+	for i := 0; i < 5; i++ {
+		go sleepGopher(i, c) // 相当于创建了一个线程去执行。但是当主进程结束时，也会结束这个子线程
+	}
+	for i := 0; i < 5; i++ {
+		gopherID := <-c
+		fmt.Println("goher", gopherID, "has finished")
+	}
+}
+```
+
+
+
+## 使用select处理多个通道
+
+同时等待多个通道的值，因为每个通道的值可能类型不同。
+
+time.After函数，返回一个通道，该通道在指定时间后会接收到一个值（发送该值的goroutine是go运行时的一部分)
+
+select 和switch有点像。
+
+该语句包含的每个case都持有一个通道，用来发送或接收数据。select会**等待**直到某个case分支的操作者**就绪**，然后就会执行该case分支。
+
+注意：即使已经停止等待goroutine，但只要main函数还没有返回，仍在运行的goroutine将会继续占用内存。
+
+select语句在不包含任何case的情况下将永远的等下去。。。
+
+```go
+func sleepGopher(id int, c chan int) {
+	time.Sleep(time.Duration(rand.Intn(4000)) * time.Millisecond)
+	c <- id
+}
+
+func main() {
+	c := make(chan int)
+	for i := 0; i < 5; i++ {
+		go sleepGopher(i, c)
+	}
+
+	timeout := time.After(2 * time.Second)
+	for i := 0; i < 5; i++ {
+		select { // 一直等待，直到有一个条件满足然后继续执行
+		case gopherID := <-c:
+			fmt.Println("goher ", gopherID, " has finished sleeping")
+		case <-timeout:
+			fmt.Println("my patience ran out")
+			return
+		}
+	}
+}
+
+```
+
+
+
+### nil通道
+
+如果不使用make初始化通道，那么通道变量的值就是nil（零值）
+
+对nil通道进行发送或接收不会引起panic，但会导致永久阻塞
+
+对nil通道执行close函数，那么会引起panic
+
+nil通道的用处：
+
+对于包含select语句的循环，如果不希望每次循环都等待select所涉及的所有通道，那么可以先将某些通道社为nil，等到发送值准备就绪后，再将通道变成一个非nil值并执行发送操作。
+
+
+
+### 阻塞和死锁
+
+当goroutine在等待通道的发送或接收时，我们就说它被阻塞了。
+
+除了goroutine本身占用少量的内存外，被阻塞的goroutine并不消耗其他资源。goroutine静静的停在那里，等待导致其阻塞的事情来接触阻塞。
+
+当一个或多个goroutine因为某些永远无法发生的事情被阻塞时，我们称这种情况为死锁。而出现死锁的程序通常会崩溃或挂起。
+
+```go 
+package main
+
+func main() {
+	c := make(chan int)
+	<-c  // 会导致死锁
+}
+```
+
+流水线模式
+
+```go
+func sourceGopher(downstream chan string) {
+	for _, v := range []string{"some1", "some2", "some bad"} {
+		downstream <- v
+	}
+	downstream <- ""  // 发送结束标识
+}
+
+func filterGopher(upstream, downstream chan string) {
+	for {
+		item := <-upstream
+		if item == "" {
+			downstream <- ""
+			return
+		}
+		if !strings.Contains(item, "bad") {
+			downstream <- item
+		}
+	}
+}
+
+func printGopher(upstream chan string) {
+	for {
+		v := <-upstream
+		if v == "" {
+			return
+		}
+		fmt.Println(v)
+	}
+}
+
+func main() {
+	c0 := make(chan string)
+	c1 := make(chan string)
+	go sourceGopher(c0)  // 开启流水线
+	go filterGopher(c0, c1)
+	printGopher(c1)
+}
+
+```
+
+go允许在没有值可供发送的情况下通过close函数关闭通道例如  `close(c)`
+
+通道被关闭后无法写入任何值，如果尝试写入将会引发panic。
+
+尝试读取被关闭的通道会获得于通道类对应的零值。
+
+注意： 如果在循环里读取一个已关闭的通道，并没有检查通道是否关闭，那么该循环可能会一直运转下去，耗费大量cpu时间。
+
+执行以下代码可得知通道是否被关闭 `v, ok := <-c`
+
+对上面的代码修改就是
+
+```go
+func sourceGopher(downstream chan string) {
+	for _, v := range []string{"some1", "some2", "some bad"} {
+		downstream <- v
+	}
+    close(downstream)
+}
+
+func filterGopher(upstream, downstream chan string) {
+	for {
+		item, ok := <-upstream  // 检查通道是否关闭
+		if !ok {
+            close(upstream)
+			return
+		}
+	}
+}
+```
+
+
+
+###  常见的关闭通道的模式
+
+使用range关键字，这和python中for会自动处理stopiter错误一样。下面对他们进行修改
+
+```go
+func filterGopher(upstream, downstream chan string) {
+    for item := range upstream {
+		if !strings.Contains(item, "bad") {
+			downstream <- item
+		}
+	}
+    close(downstream)
+}
+```
+
+
+
+## 并发
+
+共享值，要确定共享值会不会引发竞争。
+
+### go的互斥锁（mutex）
+
+在使用共享变量时获得锁，并在使用变量过程中，一直持有锁
+
+```go
+mutex = mutual exclusive
+Lock() Unlock()
+```
+
+互斥锁在rsync包中。
+
+```go
+var mu sync.Mutex
+func main() {
+    mu.lock()
+    defer mu.Unlock()
+}
+```
+
+下面是一个互斥锁的完整例子：
+
+````go
+type Visited struct {
+	mu      sync.Mutex  // 将锁存在一个变量中
+	visited map[string]int  // 字典值
+}
+
+func (v *Visited) VisitLink(url string) int {
+	v.mu.Lock()  // 加锁之后，防止别的线程再访问v的地址
+	defer v.mu.Unlock()
+	count := v.visited[url]
+	count++
+	v.visited[url] = count
+	return count
+}
+````
+
+
+
+### 长时间运行的工作进程
+
+工作进程（worker），感觉像守护进程。通常会被写成包含select语句的for循环
+
+### 事件循环和goroutine
+
+go通过提供goroutine作为核心概念，消除了对中心循环的需求。
 
 
 
