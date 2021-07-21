@@ -36,7 +36,7 @@ func main() {
 
 文本对齐
 
-格式化动词里指定宽度，就可以对齐文本：%4v，就是向左填充到足够4个宽度。
+格式化动词里指定宽度，就可以对齐文本：`%4v`，就是向左填充到足够4个宽度。
 
 正数，向左填充空格
 
@@ -96,15 +96,15 @@ func main() {
 
 ```go
 var (
-    distance = 50000
-    speed = 999999
+    distance int = 50000
+    speed float64 = 999999
 )
 
-var distance, speed = 1000000, 222222
-const houseprice, housenumber = 10000, 678
+var distance, speed int = 1000000, 222222
+const houseprice, housenumber int = 10000, 678
 ```
 
-赋值运算符
+### 赋值运算符
 
 ````go
 package main
@@ -116,7 +116,7 @@ func main() {
 }
 ````
 
-自增运算
+### 自增运算
 
 有后缀形式的自增或者自减，但是没有前缀形式的
 
@@ -351,7 +351,7 @@ for condition {}
 for {}
 ```
 
-
+例子
 
 ```go
 package main
@@ -477,7 +477,7 @@ switch num := rand.Intn(10); num {
 }
 ````
 
-展示随即日期的课后作业
+展示随机日期的课后作业
 
 ```go
 package main
@@ -727,7 +727,7 @@ func main() {
 const some = 2400000000000000 // 这里的常量是没有类型的，这里是untyped
 ```
 
-常量使用const关键字来声明，程序里的每个字面值都是常量
+常量使用const关键字来声明，程序里的**每个字面值都是常量**
 
 这意味着，比较大的数值可以作为字面值 直接使用。
 
