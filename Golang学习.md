@@ -3473,7 +3473,75 @@ go通过提供goroutine作为核心概念，消除了对中心循环的需求。
 
 
 
+------
 
+所有类型声明及初始化模板
+
+声明变量：
+
+```go
+const const_val int = 1000  // 声明一个常量
+
+var var_val float64
+var str_val string // 声明变量，默认值都是零值
+var bool_val bool
+
+var list_val [5]int // 声明数组
+
+var slice_val []int  // 声明切片
+
+var map_val map[string]int  // 声明一个map变量
+
+var struct_val struct {  // 声明一个
+	some1 float64
+	some2 float64
+}
+var chan_val chan int  // 声明一个通道
+
+var interface_val interface {}  // 声明一个接口
+
+var ErrVal error // 声明一个错误
+
+func func_val() string {
+	return "some return"
+}  // 声明一个函数
+```
+
+声明时初始化
+
+```go
+const const_val int = 1000
+
+var var_val float64 = 1000.0
+var str_val string = "somthing"
+var bool_val bool = true
+
+var list_val [5]int = [5]int{1, 2, 3, 4, 5}
+
+var slice_val []int = list_val[1:3]
+
+var map_val map[string]int = map[string]int{"some1": 1, "some2": 2}
+
+var struct_val = struct {
+	some1 float64
+	some2 float64
+}{
+	some1: 1.0,
+	some2: 2.0,
+}
+
+var chan_val chan int
+
+var interface_val interface {
+	talk() string
+}
+
+var ErrVal error = errors.New("something error")
+
+func func_val() string {
+	return "some return"
+}
+```
 
 
 
