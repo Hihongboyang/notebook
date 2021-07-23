@@ -3050,6 +3050,122 @@ func (sw *safeWriter) writeln(s string) {
 }
 ```
 
+### 收集于网络的关于文件关闭的文章
+
+每当有一个实现了`io.Closer` 接口的对象 `x` 时，在得到对象并检查错误之后，会立即使用`defer x.Close()` 以保证函数返回时 `x` 对象的关闭 。以下给出两个惯用写法例子。
+
+- **HTTP 请求**
+
+```go
+resp, err := http.Get("https://golang.google.cn/")
+if err != nil {
+    return err
+}
+defer resp.Body.Close()
+// The following code: handle resp
+```
+
+- **访问文件**
+
+```go
+f, err := os.Open("/home/golangshare/gopher.txt")
+if err != nil {
+    return err
+}
+defer f.Close()
+// The following code: handle f
+```
+
+上述的这种写法有潜在的问题，`defer x.Close()`会忽略他的返回值，但在执行x.Close()时，并不能保证x一定可以正常关闭，万一有错误怎么办？
+
+在posix系统中关闭文件可能会有EIO错误，EIO错误是写入数据还未写入到磁盘上，就关闭了文件。
+
+解决方案：
+
+第一种，不使用defer
+
+```go
+func sloution() error {
+    f, err := os.Create("/home/golangshare/gopher.txt")
+    if err != nil {
+        return err
+    }
+    
+    if _, err = io.WriteString(f, "hello"); err != nil{
+        f.Close()
+        return err
+    }
+    return f.Close()
+}
+```
+
+缺点就是我们需要在任务失败时，自己再次调用Close。并且在每个地方都如此使用。
+
+第二种，通过命名返回值err和闭包处理
+
+```go
+func sloution() (err error) {
+    f, err := os.Create("/home/golangshare/gopher.txt")
+    if err != nil {
+        return err
+    }
+    
+    defer func() {
+        closeErr := f.Close()
+        if err == nil {
+            err = closeErr
+        }
+    }()
+    
+    _, err = os.WriteString(f, "hello")
+    return
+}
+```
+
+第三种，在函数最后return语句之前，显示调用一次f.Close()
+
+```go
+func solution() error {
+    f, err := os.Create("/home/golangshare/gopher.txt")
+    if err != nil {
+        return err
+    }
+    
+    defer f.Close()
+    if _, err := io.WriteString(f, "hello"); err != nil {
+        return err
+    }
+    
+    if err := f.Close(); err != nil {
+        return err
+    }
+    return nil
+}
+```
+
+这种解决方案能在 `io.WriteString` 发生错误时，由于 `defer f.Close()` 的存在能得到 `close` 调用。也能在 `io.WriteString` 未发生错误，但缓存未刷新到磁盘时，得到 `err := f.Close()` 的错误，而且由于 `defer f.Close()` 并不会返回错误，所以并不担心两次 `Close()` 调用会将错误覆盖。
+
+第四种，函数return执行f.Sync()
+
+```go
+func solution() error {
+    f, err := os.Create("/home/golangshare/gopher.txt")
+    if err != nil {
+        return err
+    }
+    
+    defer f.Close()
+    
+    if _, err = io.WriteString(f, "hello"); err != nil {
+        return err
+    }
+    
+    return f.Sync()
+}
+```
+
+由于调用 `close()` 是最后一次获取操作系统返回错误的机会，但是在我们关闭文件时，缓存不一定被会刷到磁盘上。那么，我们可以调用 `f.Sync()`（其内部调用系统函数 `fsync` ）强制性让内核将缓存持久到磁盘上去。由于强制性刷盘，这种方案虽然能很好地保证数据安全性，但是在执行效率上却会大打折扣。
+
 ### 
 
 ### New error
