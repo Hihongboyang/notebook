@@ -1694,7 +1694,7 @@ func main() {
 }
 ```
 
-### map不会被赋值
+### map不会被复制
 
 数组、int、float64等类型在赋值给新变量或传递至函数/方法的时候会创建相应的副本。
 
@@ -2674,7 +2674,7 @@ func main() {
 }
 ```
 
-go语言在变量通过点标记法进行调用的时候，自动使用&取得变量的内存地址。也就是不用写`(&rebecca).birthday()`这种形式也可以运行。即
+go语言在变量通过 点 标记法进行调用的时候，自动使用&取得变量的内存地址。也就是不用写`(&rebecca).birthday()`这种形式也可以运行。即
 
 ```go
 func (p *person) bitrhday() { // 这里变成接收者了
@@ -2721,11 +2721,11 @@ func main() {
 
 ### 修改数组
 
-于C语言中大致相同
+与C语言中大致相同
 
 ### 隐式指针
 
-go语言中一些内置的集合类型就在暗中使用指针。。
+go语言中一些内置的集合类型就在暗中使用指针。
 
 map在被赋值或作为参数传递的时候不会被复制：
 
@@ -2746,7 +2746,7 @@ slice是指向数组的窗口，实际上slice在指向数组元素的时候也�
 - slice的容量
 - slice的长度
 
-当slice被直接传递至函数或方法时，slice的内部指针就可以对地层数据进行修改
+当slice被直接传递至函数或方法时，slice的内部指针就可以对底层数据进行修改
 
 指向slice的显式指针的唯一作用就是修改slice本身：slice的长度、容量以及其起始偏移量。
 
@@ -2916,6 +2916,17 @@ func main() {
 }
 ```
 
+如下修改就可以为map赋值
+
+```go
+soup = make(map[string]int) // 为map分配空间
+soup["onion"] = 10
+measurement, ok := soup["onion"] // 可以获取到直
+
+```
+
+
+
 ### nil接口
 
 声明为接口的变量在未被赋值时，它的零值是nil。对于一个未被赋值的接口变量来说，它的接口类型和值都是nil，并且变量本身也等于nil。
@@ -3039,7 +3050,7 @@ func (sw *safeWriter) writeln(s string) {
 }
 ```
 
-
+### 
 
 ### New error
 
@@ -3433,7 +3444,7 @@ mutex = mutual exclusive
 Lock() Unlock()
 ```
 
-互斥锁在rsync包中。
+互斥锁在sync包中。
 
 ```go
 var mu sync.Mutex
