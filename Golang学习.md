@@ -1546,7 +1546,7 @@ func main() {
 	}
 
 	dump("planets", planets)
-	dump("planets", planets[1:2])  // 这里会显示 容量是4 为什么？？？
+    dump("planets", planets[1:2])  // 这里会显示 容量是4 为什么？？？应该是planets本身是一个切片，再截取[1:2]的部分，相当于第一个元素被舍弃了。切片缩小了。
 }
 
 ```
@@ -3667,6 +3667,46 @@ var ErrVal error = errors.New("something error")
 
 func func_val() string {
 	return "some return"
+}
+```
+
+#### 实现堆排序
+
+```go
+func BuildMaxHeap(A []int, length int) {
+	for i := length / 2; i > 0; i-- {
+		HeadAdjust(A, i, length)
+	}
+}
+
+func HeadAdjust(A []int, k int, length int) {
+	A[0] = A[k]
+	for i := 2 * k; i <= length; i *= 2 {
+		if i < length && A[i] < A[i+1] {
+			i++
+		}
+		if A[0] >= A[i] {
+			break
+		} else {
+			A[k] = A[i]
+			k = i
+		}
+	}
+	A[k] = A[0]
+}
+
+func HeapSort(A []int, length int) []int {
+	BuildMaxHeap(A, length)
+	for i := length; i > 1; i-- {
+		A[i], A[1] = A[1], A[i]
+		HeadAdjust(A, 1, i-1)
+	}
+}
+
+func main() {
+	var some_list = [10]int{0, 87, 45, 78, 32, 17, 65, 53, 9}
+	fmt.Println(HeapSort(some_list[:], 8))
+	fmt.Println(some_list[1:])
 }
 ```
 
