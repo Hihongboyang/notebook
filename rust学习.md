@@ -1,5 +1,24 @@
 # rust学习
 
+## hello world
+
+```rust
+fn main()
+{
+    println!("hello world !!")
+}
+```
+
+运行程序
+
+```shell
+cargo run
+```
+
+
+
+
+
 ## 变量
 
 ```rust
@@ -344,7 +363,7 @@ fn main(){
 以字符串String类型举例：
 
 ```rust
-let s1 = String::from("hell拷贝o");
+let s1 = String::from("hello");
 let s2 = s1;
 ```
 
@@ -364,9 +383,9 @@ let s2 = s1;
 | ----- | ----- |
 | 0     | h     |
 | 1     | e     |
-| 2     | 拷贝l |
+| 2     | l     |
 | 3     | l     |
-| 4的   | o     |
+| 4     | o     |
 
 在rust中当s2 = s1时，并没有复制堆内存中的东西，而只是复制了引用，同时rust使**s1的引用失效**。所以在超出作用域释放内存时，就不用再释放s1了。
 
@@ -374,9 +393,9 @@ let s2 = s1;
 
 ```rust
 fn main(){
-    let x = 5;
-    let y = x;
-    println!("{} {}", x, y); // Error: borrow of moved value: 's1'
+	let s1 = String::from("hello");
+	let s2 = s1;
+    println!("{} {}", s1, s2); // Error: borrow of moved value: 's1'
 }
 ```
 
@@ -394,7 +413,7 @@ fn main(){
 
 
 
-于此对应，在栈上的数据的拷贝叫 复制。一个叫`Copy trait`的方法。
+于此对应，在栈上的数据的拷贝叫 复制。并有一个叫`Copy trait`的方法。
 
 - `Copy trait`, 可以用于像整数这样完全存放在stack上面的类型
 - 如果一个类型实现了copy这个trait，那么旧的变量在赋值后仍然可用
@@ -592,7 +611,7 @@ fn first_world(s: &str) -> &str{ // 采用字符串切片
     let bytes = s.as_bytes();
     for(i, &item) in bytes.iter().enumerate()
     {
-        it item == b' '
+        if item == b' '
         {
             return &s[..];
         }
@@ -637,7 +656,7 @@ struct User{
 fn main(){
     let user1 = User{
         email: String::from("abc@123.com"),
-        usernameL: String::from("Nikky"),
+        username: String::from("Nikky"),
         active: true,
         sign_in_count: 556,  // 初始化时要给每个成员都赋值
     };
@@ -1351,7 +1370,7 @@ pub fn eat_at_restaurant() {
 
 模块不仅可以组织代码，还可以定义私有边界
 
-如果想把**函数**或**struct**等设为私有，可以将它放到莫个模块中。
+如果想把**函数**或**struct**等设为私有，可以将它放到某个模块中。
 
 rust 中所有的条目（函数，方法，struct，enum，模块，常量）**默认**是**私有的**，不能被外部访问。
 
@@ -1643,7 +1662,7 @@ fn main() {
 
 Enum的变体可以附加不同类型的数据
 
-Enum的变体定义在同一个enum类型下
+Enum的变体定义在同一个enum类型下。在编译时知道类型，就可以分配空间，并且知道数据支持哪些操作。
 
 ````rust
 enum SpreadsheetCell {
@@ -1655,25 +1674,388 @@ enum SpreadsheetCell {
 fn main() {
     let now = vec![
         SpreadsheetCell::Int(3),
-        SpreadsheetCell::Text(String:from("blue")),
-        SpreadsheetCell::Float(10.12),
+        SpreadsheetCell::Text(String::from("blue")),
+        SpreadsheetCell::Float(10.12), // 三个单元格，每个单元格都是SpreadsheetCell中的一种变体
     ];
 }
 ````
 
 
 
+## 字符串
+
+rust字符串使人困扰的原因
+
+- rust倾向于暴露可能的错误
+- 字符串数据结构复杂
+- rust中的字符串utf-8
+
+### 什么是字符串
+
+byte类型的集合，并且提供一些方法，能将byte解析为文本。
+
+在rust的`核心语言层面`，只有一个字符串类型：字符串切片`str`（或&str）
+
+字符串切片：对存储在其他地方、utf-8编码的字符串的引用，字符串字面值：存储在二进制文件中，也是字符串切片。
 
 
 
+这里要讲的是String 类型：
+
+此类型来自`标准库`而不是核心语言层面。存储在堆上可以增长、可修改、可拥有。使用utf-8编码。
+
+### 其他类型的字符串
+
+rust标准库中包含了很多其他的字符串类型，例如： `OsString、OsStr、CString、CStr`
+
+- 有String 和Str 后缀的，分别代表**String拥有所有权**或**Str借用**的变体
+- 可以存储不同编码的文本或在内存中以不同的形式展现。
+
+library crate针对存储字符串可提供更多的选项
 
 
 
+### 创建一个新的字符串（String）
+
+很多`Vec<T>`的操作都可用于String。创建方法
+
+```rust
+String::new()  // 函数
+```
+
+使用初始值来创建String：
+
+`to_string()` 方法  ，可用于实现了Display trait 的类型，包括字符串字面值。
+
+```rust
+fn main() {
+    let data = "initial contents";
+    let s = data.to_string();
+    let s1 = "initial contents".to_string();
+}
+```
+
+`String::from()`函数，从字面值创建String
+
+````rust
+fn main() {
+    let s = String::from("initial contents")
+}
+````
+
+### 更新String
+
+`push_str()`方法：把一个字符串**切片**附加到String
+
+```rust
+fn main() {
+    let mut s = String::from("foo");
+    s.push_str("bar");
+
+    println!("{}", s);
+}
+```
+
+可以看到push_str函数的签名，第一个参数是一个可变的借用，第二个也是一个借用。都不会获得参数的所有权。
+
+```rust
+pub fn push_str(&mut self, string: &str)
+```
+
+`push()` 把单个字符附加到String
+
+```rust
+s.push('p')  // 注意单个字符用''
+```
 
 
 
+`+号连接`
+
+这有使用泛型和多态类似的
+
+```rust
+fn main() {
+    let s1 = String::from("hello, ");
+    let s2 = String::from("world!");
+
+    let s3 = s1 + &s2;
+
+    println!("{}", s3);
+    println!("{}", s1); // 这里会报错，说s1的所有权已经转移。
+    println!("{}", s2);
+}
+```
+
+s1的所有全已经转移，是因为使用+的原因，这是因为+使用了类似
+
+````rust
+fn add(self, s:&str) -> String{...}
+````
+
+他会获得s1的所有权，而第二个数用字符串切片。
+
+标准库中的add方法使用了泛型，
+
+只能把&str添加到String。
+
+解引用强制转换。之所以能够对引用实现字符串切片的功能。
 
 
+
+`format宏`
+
+```rust
+fn main() {
+    let s1 = String::from("hello, ");
+    let s2 = String::from("world!");
+
+    let s3 = String::from("!!!!");
+
+    let s = format!("{}-{}-{}",s1,s2,s3);
+    println!("{}",s);
+}
+```
+
+使用format宏会返回一个字符串。可以使用一个变量进行接收。而且format并不会获得字符串的所有权，所以还可以在之后的代码中使用。
+
+
+
+### 对String按索引的形式进行访问
+
+按索引的语法访问String的某部分，会报错！！！！
+
+```rust
+&s1[0]
+```
+
+
+
+rust的字符串不支持索引语法的访问
+
+String的内部表示： String是对`Vec<u8>`的包装，并且他有一个len方法，返回String的**字节数**。
+
+```rust
+fn main() {
+    let len = String::from("something").len()
+    
+    println!("{}", len)
+}
+```
+
+rust中看待字符串有三种方式  字节（bytes）、标量值（scalar values)、字形簇(grapheme clusters)
+
+字节：查看的是字符串每一个字节存储的整数值。
+
+标量值： 这是unicode中的概念，描述的是一个unicode**字符**的表示
+
+字形簇：最接近我们看到的字符，但是rust 的标准库是不支持的。
+
+````rust
+fn main() {
+    let w = "一个字符串";
+    println!("{}", w.len()); // 15个字节
+    
+    for b in w.bytes() {
+        println!("{}", b); // 228 184 128 228 184 170 229 173 151 231 172 166 228 184 178
+        // 每个中文字符占用3个字节
+    }
+}
+````
+
+```rust
+fn main() {
+    let w = "一个字符串";
+    
+    for b in w.chars() {
+        println!("{}", b);
+    }
+}
+```
+
+rust 不允许对String进行索引的最后一个原因是：
+
+- 索引操作应该消耗常量的时间（O(1)）
+- 而String无法保证这一点，它需要遍历所有内容，来确定有多少合法的字符。
+
+### 切割String
+
+可以使用**[]**和**一个范围**来创建字符串的切片
+
+```rust
+fn main() {
+    let w = "一个字符串";
+    let s = &w[0..3]; // 只会取到'一'。如果是4就会panick
+    println!("{}", s);
+}
+```
+
+
+
+## 创建hashmap
+
+创建Hashmap： new()函数
+
+添加数据： insert()方法
+
+```rust
+use std::collections::HashMap;
+
+fn main() {
+    let mut scores: HashMap<String, i32> = HashMap::new();  // 没有加入值时需要指定类型 
+}
+```
+
+```rust
+use std::collections::HashMap;
+
+fn main() {
+    let mut scores = HashMap::new();
+    scores.insert(String::from("Blue"), 20); // 加入数据可以根据上下文推断出来类型
+}
+
+```
+
+- 由于hashmap用的不较少，不在prelude中，需要手动导入
+- 标准库对其支持较少，没有内置的宏来创建hashmap
+- 数据存储在heap上
+- hashmap是同构的，这是指一个hashmap中：
+- - 所有的k必须是同一种类型
+  - 所有的V必须是用一种类型
+
+
+
+### 使用collect方法创建hashmap
+
+在元素类型为tuple的vector上使用collect方法，可以组建一个hashmap：
+
+- tuple必须有两个值，一个作为k，一个作为v
+
+- collect 方法可以把数据整合成多种集合类型，包括hashmap
+  - 返回值需要显式指明类型 
+
+```rust
+use std::collections::HashMap;
+
+fn main() {
+    let teams = vec![String::from("Blue"), String::from("yellow")];
+    let intial_scores = vec![10, 50];
+
+    let scores: HashMap<_, _> = teams.iter().zip(intial_scores.iter()).collect(); // 这个例子和python中类似将两个vecter 合成一个tuple，然后使用collect返回一个集合，collect可以返回很多类型的集合，需要在接收的变量上指名类型。
+}
+```
+
+### hashmap和所有权
+
+对于实现了copy trait 的类型如i32，值会被复制到hashmap中
+
+对于拥有所有权的值如String，值会被移动，所有全会转移给hashmap
+
+如果将值的引用插入到hashmap，值本身不会移动
+
+```rust
+use std::collections::HashMap;
+
+fn main() {
+    let field_name = String::from("favourite color");
+    let field_value = String::from("bule");
+
+    let mut map = HashMap::new();
+    map.insert(field_name, field_value);  // 所有权发生了移动，我们不能再在之后使用他们
+    println!("{}:{}", field_name, field_value);
+    
+    map.insert(&field_name, &field_value);  // 仅仅传递引用，不会产生所有权移动
+    println!("{}:{}", field_name, field_value);
+}
+```
+
+但是  在**hashmap有效的期间**，被引用的值必须保持有效。
+
+### 访问hashmap中的值
+
+get方法
+
+- 参数k， 返回：Option<&V>
+
+- ```rust
+  use std::collections::HashMap;
+  
+  fn main() {
+      let mut scores = HashMap::new();
+      scores.insert(String::from("yellow"), 10);
+      scores.insert(String::from("blue"), 20);
+  
+      let team_name = String::from("blue");
+      let score = scores.get(&team_name);
+  
+      match score {
+          Some(s) => println!("{}", s),
+          None => println!("team not exist"),
+      }
+  }
+  ```
+
+
+
+### 遍历hashmap
+
+使用for循环
+
+````rust
+fn main() {
+    let mut scores = HashMap::new();
+
+    scores.insert(String::from("blue"), 10);
+    scores.insert(String::from("yellow"), 20);
+
+    for (k, v) in &scores {
+        println!("{}:{}", k,v);
+    }
+}
+````
+
+### 更新hashmap<k, v>
+
+- hashmap大小可变，每个时刻都可以改变他的大小。
+- 但是每个k同时只能对应一个v
+
+更新hashmap中的数据，分为以下几种情况：
+
+1. k已经存在，对应一个V
+   - 替换现有的v
+   - 保留现有的V，忽略新的V
+   - 合并现有的V和新的V
+2. k不存在
+   - 添加一对k, v
+
+```rust
+fn main() {
+    let mut scores = HashMap::new();
+
+    scores.insert(String::from("blue"), 10);
+    scores.insert(String::from("blue"), 25);  // 替换了原有的值
+    println!("{:?}", scores);
+
+    scores.entry(String::from("blue")).or_insert(30); // 使用entry判断是否存在blue这个键。若不存在则使用or_insert插入
+
+    let count = scores.entry(String::from("blue")).or_insert(0);
+    *count += 5;  // 解引用返回值，修改原有的值
+
+    println!("{:?}", scores);
+}
+```
+
+
+
+`entry`方法: 检查指定的k是否对应一个V
+
+- 参数是k
+- 返回enum Entry：代表值是否存在
+
+`entry` 的`or_insert()`方法返回：
+
+- 如果k存在，返回到对应的V的一个可变引用。
+- 如果k不存在，将方法参数作为k的新值插进去，返回到这个值的可变引用。
 
 
 
