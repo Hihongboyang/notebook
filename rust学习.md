@@ -439,7 +439,7 @@ fn main(){
 ```rust
 fn main(){
     let s = String::from("Hello World");
-    take_ownership(s); // 将s的所有权转向函数内部了
+    take_ownership(s); // 将s的所有权转向函数内部了, 在外部就不能访问了
     let x = 5;
     makes_copy(x);  // 由于类型的原因，x在外面还是可以访问的
     println!("x: {}", x);
@@ -601,7 +601,7 @@ fn first_word(s: &str) -> &str{}
 ````rust
 fn main() {
     let my_string = String::from("Hello world");
-    let wordIndex = first_world(&my_string[..]);
+    let wordIndex = first_world(&my_string[..]);  // 这里的..
     
     let my_string_literal = "hello_world";
     let wordIndex = first_world(my_string_literal);
@@ -941,7 +941,7 @@ fn main()
     let rect2 = Rectangle{
         width: 20,
         length: 10,
-    }
+    };
 
     println!("{}", rect1.can_hold(&rect2));
 }
