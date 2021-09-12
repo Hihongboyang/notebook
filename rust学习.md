@@ -1253,7 +1253,7 @@ rust的代码组织包含什么内容：
 模块系统：
 
 - package：cargo的特性，让你构建、测试、共享crate
-- crate：一个模块树，它可与i产生一个library或可执行文件
+- crate：一个模块树，它可产生一个library或可执行文件
 - module、use：让你控制代码的组织、作用域、私有路径
 - path：为struct、function、或module等命名的方式
 
@@ -1262,7 +1262,7 @@ rust的代码组织包含什么内容：
 crate的类型：
 
 1. `binary`
-2. `library`
+2. `library` 二进制的
 
 crate root:
 
@@ -1277,7 +1277,7 @@ crate root:
 
 ### cargo中对library和binary的区分
 
-在rust的项目目录中，src存放源文件而
+在rust的项目目录中，src存放源文件而（注意这是两个**文件**）
 
 src/main.rs:
 
@@ -1308,7 +1308,7 @@ carte的作用
 2. 增加程序的可读性，易于复用
 3. 控制项目的私有性。public、private
 
-建立module
+如何使用？？ 首先建立module
 
 - 使用mod关键字
 - 可以嵌套定义
@@ -1327,10 +1327,10 @@ mod front_of_house {
 }
 ```
 
-src/main.rs 和src/lib.rs 叫做crate roots。 这两个文件（任意一个）的内容形成了名为cratre的模块，位于整个模块树的根部。如下是命名空间的结构
+**src/main.rs 和src/lib.rs 叫做crate roots。 这两个文件（任意一个）的内容形成了名为cratre的模块，位于整个模块树的根部。如下是命名空间的结构**
 
 ````
-crate
+crate  --> 此处是根
 	front_of_house
 	    hosting
 	    	add_to_waitlist
@@ -1338,6 +1338,23 @@ crate
 	   	serving
 	   		take_order
 	   		server_order
+````
+
+其中一个文件中的， 结构其实是放在 crate这个隐式的根模块下面了
+
+````rust
+mod front_of_house {
+    mod hosting {
+        fn add_to_waitlist() {}
+        fn seat_at_table() {}
+    }
+    
+    mod serving {
+        fn take_order() {}
+        fn serve_order() {}
+        fn take_payment() {}
+    }
+}
 ````
 
 
