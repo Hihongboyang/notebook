@@ -1335,28 +1335,12 @@ crate  --> 此处是根
 	    hosting
 	    	add_to_waitlist
 	    	seat_at_table
-	   	serving
-	   		take_order
-	   		server_order
+	    serving
+	   	take_order
+	   	server_order
 ````
 
 其中一个文件中的， 结构其实是放在 crate这个隐式的根模块下面了
-
-````rust
-mod front_of_house {
-    mod hosting {
-        fn add_to_waitlist() {}
-        fn seat_at_table() {}
-    }
-    
-    mod serving {
-        fn take_order() {}
-        fn serve_order() {}
-        fn take_payment() {}
-    }
-}
-````
-
 
 
 ### 路径path
