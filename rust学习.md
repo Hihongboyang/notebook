@@ -2350,3 +2350,122 @@ fn main() -> Result<(), Box<dyn Error>> {
 为验证创建自定义类型
 
 创建新的类型，把验证逻辑放在构造实例的函数里
+
+
+
+## 泛型
+
+泛型：提高代码复用能力，处理重复代码的问题。
+
+泛型是具体类型或其他属性的抽象替代：你编写的代码不是最终的代码，而是一种模板，里面有一些占位符。而编译器在编译时将 占位符替换为具体的类型。
+
+```rust
+fn largest<T>(list: &[7]) -> T{...}  // 这里的T就是一个占位符， 即 类型参数
+```
+
+T 其实可以是任何合法的名称，但是一般是大写的单个字母。
+
+### 在函数的定义中使用泛型
+
+在函数中定义泛型的地方是 `参数类型`和`返回类型`。
+
+```rust
+fn largest<T>(list: &[T]) -> T{ // largest 拥有泛型T的参数list，并且list中的类型也是T，返回值的类型也是T
+    let mut largest = list[0];
+    for &item in list{
+        if item > largest {
+            largest = item;
+        }
+    }
+}
+```
+
+### 在结构体中的泛型
+
+```rust
+struct Point<T> {
+    x: T,
+    y: T,  // 两个类型相同，不能是不同类型
+}
+
+struct Point<T> {
+    x: T,
+    y: U,  // 两个类型不同
+}
+```
+
+ 可以使用多个泛型的类型参数，但是太多类型参数时，需要代码重组为更小的单元。
+
+### 枚举中使用泛型
+
+```rust
+Option<T>, Result<T, E>
+
+enum Option<T> {
+    Some(T), // 正因为使用了泛型，所以some可以判断任何类型
+    None,
+}
+
+enum Result<T,E> {
+    Ok(T),
+    Err(E),
+}
+```
+
+
+
+### 方法的定义中使用泛型
+
+为struct或enum实现方法的时候，可在定义中使用泛型。
+
+```rust
+struct Point<T> {
+    x: T,
+    y: T,
+}
+
+impl<T> Point<T> { // impl后面的T 是针对Point后面的T，实现的x方法
+    fn x(&self) -> &T {
+        &self.x
+    }
+}
+impl Point<i32> {  // 针对具体类型实现的x方法， 其他类型没有实现此方法
+    fn x(&self) -> &i32 {
+        &self.x
+    }
+}
+```
+
+把T 放在impl关键字后，表示在类型T上实现方法（放在impl后说明这个方法是接受泛型参数的，此时你的参数据需要是泛型的（模板）， 如果指定了具体的参数类型，当然也不需要指定为泛型了）。
+
+```rust
+struct Point<T, U> {
+    x: T,
+    y: U,
+}
+
+impl<T, U> Point<T, U> {
+    // 这个函数首先TU是struct的泛型，VW 是Point另一个泛型的实现，而返回值T是从self中取，W是从other中取。两个参数共同拼凑成了一个Point返回
+    fn mixup<V, W>(self, other:Point<V, W>) -> Point<T, W> {
+        Point {
+            x: self.x,
+            y: other.y,
+        }
+    }
+}
+
+fn main() {
+    let p1 = Point {x:5, y:4};
+    let p2 = Point {x: "hello", y: "c"};
+    let p3 = p1.mixup(p2);
+
+    println!("p3.x = {} , p3.y = {}", p3.x, p3.y);
+}
+```
+
+ 泛型代码的性能
+
+使用泛型的代码和使用具体类型的代码运行速度是一样的。
+
+因为单态化（monomorphization): 在编译时将泛型提替换为具体类型的过程。
+
