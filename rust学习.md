@@ -1335,11 +1335,12 @@ crate
 	    hosting
 	    	add_to_waitlist
 	    	seat_at_table
-	   	serving
-	   		take_order
-	   		server_order
+	    serving
+	   	take_order
+	   	server_order
 ````
 
+其中一个文件中的， 结构其实是放在 crate这个隐式的根模块下面了
 
 
 ### 路径path
