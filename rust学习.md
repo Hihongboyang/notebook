@@ -1253,7 +1253,7 @@ rust的代码组织包含什么内容：
 模块系统：
 
 - package：cargo的特性，让你构建、测试、共享crate
-- crate：一个模块树，它可产生一个library或可执行文件
+- crate：一个模块树，它可与i产生一个library或可执行文件
 - module、use：让你控制代码的组织、作用域、私有路径
 - path：为struct、function、或module等命名的方式
 
@@ -1262,7 +1262,7 @@ rust的代码组织包含什么内容：
 crate的类型：
 
 1. `binary`
-2. `library` 二进制的
+2. `library`
 
 crate root:
 
@@ -1277,7 +1277,7 @@ crate root:
 
 ### cargo中对library和binary的区分
 
-在rust的项目目录中，src存放源文件而（注意这是两个**文件**）
+在rust的项目目录中，src存放源文件而
 
 src/main.rs:
 
@@ -1308,7 +1308,7 @@ carte的作用
 2. 增加程序的可读性，易于复用
 3. 控制项目的私有性。public、private
 
-如何使用？？ 首先建立module
+建立module
 
 - 使用mod关键字
 - 可以嵌套定义
@@ -1327,10 +1327,10 @@ mod front_of_house {
 }
 ```
 
-**src/main.rs 和src/lib.rs 叫做crate roots。 这两个文件（任意一个）的内容形成了名为cratre的模块，位于整个模块树的根部。如下是命名空间的结构**
+src/main.rs 和src/lib.rs 叫做crate roots。 这两个文件（任意一个）的内容形成了名为cratre的模块，位于整个模块树的根部。如下是命名空间的结构
 
 ````
-crate  --> 此处是根
+crate
 	front_of_house
 	    hosting
 	    	add_to_waitlist
@@ -1338,23 +1338,6 @@ crate  --> 此处是根
 	   	serving
 	   		take_order
 	   		server_order
-````
-
-其中一个文件中的， 结构其实是放在 crate这个隐式的根模块下面了
-
-````rust
-mod front_of_house {
-    mod hosting {
-        fn add_to_waitlist() {}
-        fn seat_at_table() {}
-    }
-    
-    mod serving {
-        fn take_order() {}
-        fn serve_order() {}
-        fn take_payment() {}
-    }
-}
 ````
 
 
@@ -2053,7 +2036,7 @@ fn main() {
     scores.insert(String::from("blue"), 25);  // 替换了原有的值
     println!("{:?}", scores);
 
-    scores.entry(String::from("blue")).or_insert(30); // 使用entry判断是否存在blue这个键。若不存在则使用or_insert插入
+    scores.entry(String::from("blue")).or_insert(30); // 使用entry判断是否存在blue这个键。若不存在键则使用or_insert插入
 
     let count = scores.entry(String::from("blue")).or_insert(0);
     *count += 5;  // 解引用返回值，修改原有的值
@@ -2076,5 +2059,293 @@ fn main() {
 
 
 
+## panic! 不可恢复的错误
+
+rust的可靠性:  大部分情况下, 在编译时提示错误并进行处理.
+
+错误的分类:
+
+- 可恢复的错误, 例如文件未找到,可以尝试再次寻找.
+- 不可恢复的错误, bug,  例如索引超出范围
+
+rust没有类似异常的机制(统一处理上面所述的错误)
+
+- 可恢复的错误:  Result<T, E>
+- 不可恢复的错误:   panic!宏
+
+### 不可恢复的错误和panic!
+
+当panic! 宏执行时:
+
+- 程序会打印一个错误信息
+- 展开 (unwind) 清理调用栈(Stack) ------也可以选择中止(abort)调用栈
+- 退出程序
 
 
+
+默认情况下, 当panic发生:
+
+程序会展开调用栈(工作量巨大)
+
+- rust沿着调用栈往回走
+- 清理每个遇到的函数中的数据
+
+或者立即中止调用栈:
+
+- 直接停止程序
+- 内存清理交给操作系统完成
+
+如果想让二进制文件更小, 把设置从"展开"改为"中止":
+
+在Cargo.toml中适当的profile部分设置:
+
+panic = "abort"
+
+```
+[profile.release]
+panic = 'abort'
+```
+
+
+
+### 使用panic! 产生的回溯信息
+
+panic! 可能出现在:
+
+- 我们写的代码中,
+- 我们所依赖的代码中
+
+可以通过调用panic!的函数的回溯信息来定位引起问题的代码
+
+- 设置环境变量 RUST_BACKTRACE=1可以得到回溯信息
+
+
+
+### Result枚举与可恢复的错误
+
+Result枚举
+
+```rust
+enum Result<T, E>{  // T 和 E是泛型
+    Ok(T),
+    Err(E),
+}
+// T 操作成功的情况下,OK变体里返回的数据的类型
+// E 操作失败的情况下,Err变体里返回的错误的类型
+```
+
+举一个例子,
+
+```rust
+use std::fs::File;
+
+fn main(){
+    let f = File::open("hello.txt");
+}
+```
+
+open会返回一个Result枚举`std::result::Result<std::fs::File, std::io::Error>`成功会返回一个文件对象,失败会返回一个Error对象
+
+#### 使用match表达式处理Result
+
+和Option枚举一样, Result及其变体也是由prelude带入作用域的
+
+```rust
+fn main() {    
+	let f = File::open("hello.txt");
+    let f = match f {
+        Ok(file) => file,
+        Err(error)=> {
+            panic!("Error opening file {:?}", error)
+        }
+    };
+}
+```
+
+#### 匹配错误类型
+
+通过match匹配不同的错误类型.
+
+```rust
+use std::fs::File;
+use std::io::ErrorKind
+
+fn main() {
+	let f = File::open("hello.txt");
+    let f = match f {
+        Ok(file) => file,
+        Err(error)=> match error.kind() {
+            ErrorKind::NotFound => match File::create("hello.txt") {  // 匹配到没有创建的错误就创建一个, 并且创建问价你也会返回是否成功的错误
+                Ok(fc) => fc,
+                Err(e) => panic!("Error creating file: {:?}", e),
+            },
+            other_error => panic!("Error opening the file:{:?}", other_error),  //其他错误类型
+        },
+    };
+}
+```
+
+match的简化形式
+
+```rust
+fn main() {    
+    let f = File::open("hello.txt");
+    let f = match f {
+        Ok(file) => file,
+        Err(error)=> {
+            panic!("Error opening file {:?}", error)
+        }
+    };// unwrap 相当于上方代码的错误.
+    
+    let f = File::open("hello.txt").unwrap();  //当成功时返回OK中的信息,失败时返回错误
+    let f = File::open("hello.txt").except("文件无法打开");  // 可以返回指定错误信息.unwrap不可以
+}
+```
+
+
+
+### 传播错误
+
+有两种方式: 函数内部处理, 由调用方进行处理.
+
+```rust
+use std::fs::File;
+use std::io::Read;
+use std::io;
+
+fn read_username_from_file() -> Result<String, io::Error> {
+    let f = File::open("hello.txt");
+    let mut f = match f{
+        Ok(file) => file,
+        Err(e) => return Err(e),
+    };
+
+    let mut s = String::new();
+    match f.read_to_string(&mut s){
+        Ok(_) => Ok(s),
+        Err(e) => Err(e),
+    }
+}
+
+fn main(){
+    let _result = read_username_from_file();
+}
+```
+
+从上面这个例子可以看到,  错误是通过Error类型在函数间进行传递,这和python中的错误传递方式不同, python中错误的传递更多的是使用raise来引发, 这种方式更像是panic的方式
+
+#### 传播错误的简化方式
+
+```rust
+use std::fs::File;
+use std::io::Read;
+use std::io;
+
+fn read_username_from_file() -> Result<String, io::Error> {
+    let mut f = File::open("hello.txt")?;
+    let mut s = String::new();
+    f.read_to_string(&mut s)?;
+    Ok(s)
+}
+
+fn main(){
+    let _result = read_username_from_file();
+}
+```
+
+
+
+使用`?`符号, 这个符号只能跟在返回值为`Result`类型的后面,并且使用`?`的函数他的 返回值必须是`Result`类型.
+
+`?`的作用是等于 处理错误的match表达式:
+
+```rust
+let mut f = match f{
+        Ok(file) => file,
+        Err(e) => return Err(e),
+    };
+
+let mut f = File::open("hello.txt")?;
+```
+
+即当函数处理成功的时候, 返回处理成功的值,并且继续向下执行, 当返回错误的时候, 则直接返回错误(所以要求函数的返回值必须是`Result`枚举). 但是因为执行成功时会继续向下执行,所以当我们要返回时需要显示的使用`Ok`进行包裹.
+
+#### ?与from
+
+`Trait std::convert::From`上的from函数用于错误之间的转换.
+
+被`?`所应用的错误, 会隐式的被from函数处理
+
+当`?`调用from函数时,它所接收的错误类型会被转化为当前函数返回类型所定义的错误类型.
+
+作用: 针对不同错误原因, 返回同一种错误类型,只要每个错误类型实现了转换为所返回的错误类型的from函数
+
+再次简化
+
+```rust
+use std::fs::File;
+use std::io::Read;
+use std::io;
+
+fn read_username_from_file() -> Result<String, io::Error> {
+    let mut s = String::new();
+    File::open("hello.txt")?.read_to_string(&mut s)?; // 链式调用的形式
+    Ok(s)
+}
+
+fn main(){
+    let _result = read_username_from_file();
+}
+```
+
+#### ?和main函数
+
+```rust
+use std::error::Error;
+fn main() -> Result<(), Box<dyn Error>> {
+    let f = File::open("hello.txt")?;
+    Ok(())
+}
+```
+
+
+
+### 何时使用panic!
+
+原则： 在定义一个可能失败的函数是的时候，优先考虑返回Result， 否则就返回`panic!`
+
+在编写示例，原型代码，测试等的时候可以使用`panic！`
+
+演示某些概念：unwrap
+
+原型代码：unwrap、except  给出明确的错误提示，方便后面处理
+
+测试代码中： 一旦报错就说明测试没有通过
+
+
+
+错误处理的指导建议
+
+当代码最终可能处于损坏状态时，最好使用`panic！`
+
+损坏状态（Bad state）：某些假设、保证、约定、或不可变性被打破时。例如非法的值，矛盾的值或空缺的值被传入代码。或者
+
+- 这种损坏状态并不是预期能够偶尔发生的事情
+- 在此之后，您的代码如果处于这种损坏状态就无法运行
+- 在你使用的类型中没有一个好的方法来将这些信息（处于损坏状态 ）进行编码
+
+使用场景
+
+调用你的代码，传入无意义的参数值：`panic!`
+
+调用外部不可控代码，返回非法状态，你无法修复：`panic!`
+
+如果失败时可预期的：`panic!`
+
+当你的代码对值进行操作，首先应该验证这些值：`panic!`
+
+
+
+为验证创建自定义类型
+
+创建新的类型，把验证逻辑放在构造实例的函数里
