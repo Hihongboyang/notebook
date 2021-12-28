@@ -15,11 +15,40 @@ fn main()
 cargo run
 ```
 
+rustup 换源
+
+```shell
+export RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rust-static
+export RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rust-static/rustup
+```
+
+cargo 换源
+
+$HOME/.cargo  下创建config文件
+
+```shell
+[source.crates-io]
+registry = "https://github.com/rust-lang/crates.io-index"
+replace-with = 'ustc'
+[source.ustc]
+registry = "git://mirrors.ustc.edu.cn/crates.io-index"
+```
+
 
 
 
 
 ## 变量
+
+变量声明
+
+```rust
+let variable: i32 = 100;
+```
+
+变量名: 变量类型 = 变量值   
+
+变量类型可以省略, 如果可以从上下文中推到出变量类型.
 
 ```rust
 fn main()
@@ -27,21 +56,39 @@ fn main()
     let x = 5; // 不可变的
     x = 3; // 会报错
     
-    let mut x = 5; // 变量可变了
+    let mut x = 5; // 变量可变了 (模式解构)
 }
 ```
 
-常量
+```rust
+let mut x = 5; // mut x: i32
+x = 10;
+```
 
-常量在绑定一个值后也是不可变的。与不可变的变量的区别是：
-
-- 不能使用mut，常量永远不可变。
-- 声明常量使用const关键字，类型必须被标注
-- 常量可以在任何作用域内进行声明，包括全局作用域
-- 常量只可以绑定到常量表达式，无法绑定到函数的调用结果或者只能在运行时才能计算出
+let 语句在此处引入了一个模式解构, 不能把let mut视为一个组合,而应该将mut x视为一个组合.  mut x是一个“模式”，我们还可以用这种方式同时声明多个变量： 
 
 ```rust
-const MAX_POINTS: u32 = 100_000;
+let (mut a, mut b) = (1, 2);
+let Point { x: ref a, y: ref b} = p;
+```
+
+在Rust中，一般把 声明的局部变量并初始化的语句称为“变量绑定”，强调的是“绑定”的含 
+
+义，与C/C++中的“赋值初始化”语句有所区别。
+
+
+
+注意变量的声明和初始化可以是分开的, 只要在使用之前初始化了即可
+
+```rust
+fn test(confition: bool) {
+    let x: i32; // 声明x, 不必使用mut修饰
+    if condition {
+        x = 1;  // 初始化x, 不需要x是mut的, 因为这是初始化,不是修改.
+        println!("{}", x);
+    }
+    // 如果条件不满足,x 没有被初始化  但是没关系,只要这里不使用 x 就没事
+}
 ```
 
 
@@ -59,11 +106,114 @@ fn main(){
 
 
 
+类型推导
+
+从上下文中的信息进行推导
+
+```rust
+fn main() {
+    // 没有明确标出变量的类型, 但是通过字面量的后缀,编译器知道elem的类型为u8
+    let elem = 5u8;
+    
+    // 创建一个动态数组, 数组内部包含的是什么元素类型可以不写
+    let mut vec = Vec::new();
+    vec.push(elem);
+    // 后面调用了push函数,通过elem变量的类型, 编译器可以推导出vec的实际类型是 Vec<u8>
+    
+    println!("{:?}", vec);
+    
+}
+```
+
+
+
+类型别名
+
+可以用type关键字给同一个类型起个别名（type alias）
+
+```rust
+type Age = u32;
+
+fn grow(age: Age, year: u32) -> Age {
+    age + year
+}
+
+fn main() {
+    let x: Age = 20;
+    println!("20 years later: {}", grow(x, 20));
+}
+```
+
+类型别名还可以用在泛型场景
+
+```rust
+type Double<T> = (T, Vec<T>); // 小括号包围的是一个 tuple, 参考后面的复合类型
+```
+
+
+
+
+
+静态变量
+
+rust中可以用static关键字声明静态变量
+
+```rust
+static GLOBAL: i32 = 0;
+```
+
+与let语句一样，static语句同样也是一个模式匹配。与let语句不同的 是，用static声明的变量的生命周期是整个程序，从启动到退出。static 变量的生命周期永远是'static，它占用的内存空间也不会在执行过程中回收。这也是Rust中唯一的声明全局变量的方法。
+
+全局变量使用有很多限制
+
+- 全局变量必须在声明的时候马上初始化； 
+- 全局变量的初始化必须是编译期可确定的常量，不能包括执行期才能确定的表达式、语句和函数调用； 
+- 带有mut修饰的全局变量，在使用的时候必须使用unsafe关键字
+
+```rust
+fn main() {
+    // 局部变量声明, 可以留在后面初始化, 只要保证使用前已经初始化即可
+    let x;
+    let y = 1_i32;
+    x = 2_i32;
+    println!("{} {}", x, y);
+    // 全局变量必须声明的时候初始化, 因为全局变量可以写到函数外面, 被任意一个函数使用
+    static G1: i32 = 3;
+    println!("{}", G1);
+    
+    // 可变全局变量 无论读写都必须用 unsafe修饰
+    static mut G2: i32 = 4;
+    unsafe {
+        G2 = 5;
+        println!("{}", G2);
+    }
+    //全局变量的内存不是分配在当前函数栈上,函数退出的时候,并不会销毁全局变量占用的内存空间,程序退出才会
+}
+
+```
+
+
+
+常量
+
+常量在绑定一个值后也是不可变的。与不可变的变量的区别是：
+
+- 不能使用mut，常量永远不可变。
+- 声明常量使用const关键字，类型必须被标注
+- 常量可以在任何作用域内进行声明，包括全局作用域
+- 常量只可以绑定到常量表达式，无法绑定到函数的调用结果或者只能在运行时才能计算出
+
+```rust
+const MAX_POINTS: u32 = 100_000;
+```
+
+
+
 数据类型
 
 标量类型+复合类型
 
-通常编译器可以推断出类型。但是复杂情况需要自己指定类新。
+通常编译器可以推断出类型。但是复杂情况需要自己指定新类。
 
 ```rust
 let guess:u32 = "42".parse().expect("Not a number");
@@ -76,54 +226,271 @@ let guess:u32 = "42".parse().expect("Not a number");
 3. 布尔类型
 4. 字符类型
 
-整数类型
-
-| 位数 | 有符号 | 无符号 |
-| ---- | ------ | ------ |
-| 8    | i8     | u8     |
-| 16   | i16    | u16    |
-| 32   | i32    | u32    |
-| 64   | i64    | u64    |
-| 128  | i128   | u128   |
-| arch | isize  | usize  |
-
-isize 和usize是根据系统架构走的，64位系统就是64位。
-
-整数的溢出，整数溢出后，rust在编译时会报错，但是运行时不过会，而且溢出后会循环257=》1
 
 
+布尔类型
 
-浮点类型
-
-浮点类型的默认类型是 f64
+布尔类型（bool）代表的是“是”和“否”的二值逻辑。它有两个值： true和false。一般用在逻辑表达式中，可以执行“与”“或”“非”等运算。
 
 ```rust
-fn main(){
-    let some = 1.0 + 3.5; // f64
+fn main() { 
+    let x = true;
+    let y: bool = !x; // 取反运算 
+    
+    let z = x && y; // 逻辑与,带短路功能 
+    println!("{}", z); 
+    
+    let z = x || y; // 逻辑或,带短路功能 
+    println!("{}", z); 
+    
+    let z = x & y; // 按位与,不带短路功能 
+    println!("{}", z); 
+    
+    let z = x | y; // 按位或,不带短路功能 
+    println!("{}", z); 
+    
+    let z = x ^ y; // 按位异或,不带短路功能 
+    println!("{}", z); 
 }
 ```
 
 
 
-字符类型
+char类型
 
-字符类型用来描述但个字符，字符类型的字面值使用单引号。占用4个字节的大小。可以存储很多值，甚至可以存储emoji表情。
+它可以描述任何一个符合unicode标准的字符值。在代码中，单个的字符字面量用单引号包围。 
+
+```rust
+fn main(){
+    let x = 'z';
+    let y: char = '￥';
+    let z = '😀';
+    let love = '❤'; // 可以直接嵌入任何 unicode 字符
+
+}
+```
+
+因为char类型的设计目的是描述任意一个unicode字符，因此它占据的内存空间不是1个字节，而是4个字节。 
+
+对于ASCII字符其实只需占用一个字节的空间，因此Rust提供了单字节字符字面量来表示ASCII字符。我们可以使用一个字母b在字符或者 字符串前面，代表这个字面量存储在u8类型数组中，这样占用空间比char型数组要小一些。
+
+```rust
+let x :u8 = 1;
+let y :u8 = b'A';
+let s :&[u8;5] = b"hello";
+let r :&[u8;14] = br#"hello \n world"#;
+```
+
+
+
+整数类型
+
+各种整数类型之间的主要区分特征是: 有符号/无符号, 占据空间大小.
+
+| 整数类型     | 有符号 | 无符号 |
+| ------------ | ------ | ------ |
+| 8 bits       | i8     | u8     |
+| 16 bits      | i16    | u16    |
+| 32 bits      | i32    | u32    |
+| 64 bits      | i64    | u64    |
+| 128 bits     | i128   | u128   |
+| Pointer size | isize  | usize  |
+
+Rust原生支持了从8位到128位的整数. 需要特别关注的是isize和usize类型. 它们占据的空间是不定的,  与指针占据的空间一致, 与所在的平台相关. 如果是32位系统上, 则是32位大小; 如果是64位系统上,  则是64位大小.
 
 ````rust
-fn mian(){
-    let x = 'z';
-    let y: char = '￥'；
-    let z = '😀'；
-}
+let var1 : i32 = 32; // 十进制表示 
+let var2 : i32 = 0xFF; // 以0x开头代表十六进制表示 
+let var3 : i32 = 0o55; // 以0o开头代表八进制表示 
+let var4 : i32 = 0b1001; // 以0b开头代表二进制表示
 ````
 
+在Rust中，我们可以为任何一个类型添加方法，整型也不例外。我们甚至可以不使用变量，直接对整型字面量调用函数： 
+
+```rust
+fn main() {
+    println!("9 power 3 = {}", 9_i32.pow(3));
+}
+```
+
+如果推断不出数据的类型,默认使用i32
+
+整数溢出
+
+默认情况下，在debug模式 下编译器会自动插入整数溢出检查，一旦发生溢出，则会引发panic；在 release模式下，不检查整数溢出，而是采用自动舍弃高位的方式。
+
+如果编译一个优化后的版本，加上-O选项： 
+
+```shell
+rustc -O test.rs 
+```
+
+Rust编译器还提供了一个独立的编译开关供我们使用，通过这个开关，可以设置溢出时的处理策略
+
+```shell
+rustc -C overflow-checks=no test.rs
+```
+
+如果用户确实需要更精细地自主控制整数溢出的行为，可以调用标准库中的`checked_*`  `saturating_*`和`wrapping_*`系列函数
+
+```rust
+fn main() {
+	let i = 100_i8;
+	println!("checked {:?}", i.checked_add(i));
+	println!("saturating {:?}", i.saturating_add(i));
+	println!("wrapping {:?}", i.wrapping_add(i));
+}
+```
+
+可以看到：`checked_*`系列函数返回的类型是`Option<_>`，当出现溢出的时候，返回值是None；`saturating_*`系列函数返回类型是整数，如果溢出，则给出该类型可表示范围的“最大/最小”值；`wrapping_*`系列函数 则是直接抛弃已经溢出的最高位，将剩下的部分返回.
+
+为了 方便用户，标准库还提供了一个叫作`std::num::Wrapping<T>`的类型。它重载了基本的运算符，可以被当成普通整数使用。凡是被它包裹起来的整数，任何时候出现溢出都是截断行为。
+
+```rust
+use std::num::Wrapping;
+
+fn main() {
+    let big = Wrapping(std::u32::MAX);
+    let sum = big + Wrapping(2_u32);
+    println!("{}", sum.0);
+}
+```
 
 
-复合类型tuple
 
-创建tuple，在小括号里，将值用逗号分开。tuple中的每一个位置都对应一个类型，tuple中各个元素类型可以不同。
+浮点类型
 
-获取tuple中的值，1.类似于python中的序列解包 2. 直接获得指定位置的值，点表记法，后接元素的索引号。
+按占据空间大小区分，分别为f32和f64. 浮点类型的默认类型是 f64
+
+表示形式有如下几种:
+
+```rust
+let f1 = 123.0f64;    // f64
+let f2 = 0.1f64;      // f64
+let f3 = 0.1f32;      // f32
+let f4 = 12E+99_f64;  // f64 科学计数法
+let f5 : f64 = 2;     // f64
+```
+
+浮点数的麻烦之处在于：它不仅可以表达正常的数值，还可以表达**不正常**的数值。 
+
+在标准库中，有一个`std::num::FpCategory`枚举，表示了浮点数可能的状态：
+
+```rust
+enum FpCategory {
+    Nan,
+    Infinite,
+    Zero,
+    Subnormal,
+    Normal,
+}
+```
+
+ 其中Zero表示0值、Normal表示正常状态的浮点数。
+
+Subnormal状态是一种非常小的处在收敛的状态, 他是不准确的
+
+Infinite和Nan是带来更多麻烦的特殊状态。Infinite代表的是“无穷大”，Nan代表的是“不是数字”(not a number). 
+
+```rust
+fn main() {
+    let x = 1.0f32 / 0.0;
+    let y = 0.0f32 / 0.0;
+    println!("{} {}", x, y);
+}
+```
+
+编译执行，打印出来的结果分别为inf NaN。**非**0数除以0值，得到的是inf，0除以0得到的是NaN。 
+
+NaN这个特殊值有个特殊的麻烦，主要问题还在于它不具备“全序”的特点。
+
+```rust
+fn main() {
+    let nan = std::f32::NAN;
+    println!("{} {} {}", nan < nan, nan > nan, nan == nan);
+}
+// 结果是  false false false
+```
+
+也就是他的数值是不确定的,在任何时候都不确定.
+
+
+
+指针类型
+
+rust对数据的组织操作有多种维度：
+
+- 同一个类型， 某些时候可以指定它在栈上， 某些时候可以指定它在堆上。 内存分配方式可以取决于使用方式， 与类型本身无关。  
+- 既可以直接访问数据， 也可以通过指针间接访问数据。 可以针对任何一个对象取得指向它的指针。 
+
+- 既可以在复合数据类型中直接嵌入别的类型的实体， 也可以使用指针， 间接指向别的类型。  
+- 甚至可能在复合数据类型末尾嵌入不定长数据构造出不定长的复合数据类型。 
+
+rust中有多种指针类型
+
+![image-20211224032415504](rust学习.assets/image-20211224032415504.png)
+
+除此之外， 在标准库中还有一种封装起来的可以当作指针使用的类型， 叫“智能指针”（smart pointer）   
+
+![image-20211224032443385](rust学习.assets/image-20211224032443385.png)
+
+后面再具体介绍
+
+
+
+类型转换
+
+Rust对不同类型之间的转换控制得非常严格。必须显式的进行类型转换 以防止出现bug
+
+```rust
+fn main() {
+    let var1: i8 = 41;
+    let var2: i16 = var1 as i16;
+    // 如果你写成let var2: i16 = var1; 那么就会报错
+}
+```
+
+使用as进行强制的类型转换。并且只允许编译器认为合理的类型转换， 任意类型的转换也是不允许的，比如 将一个非数字字符转换为数字。有些时候， 甚至需要连续写多个as才能转成功， 比如&i32类型就不能直接转换为*mut i32类型， 必须像下面这样写才可以：  
+
+```rust
+fn main() {
+    let i = 42;
+    let p = &i as *const i32 as *mut i32;
+    println!("{:p}", p);
+}
+```
+
+as表达式允许的类型转换如表所示。 对于表达式e as U， e是表达式， U是要转换的目标类型， 表中所示的类型转换是允许的。  
+
+![image-20211224034105163](rust学习.assets/image-20211224034105163.png)
+
+如果需要更复杂的类型转换， 一般是使用标准库的From Into等trait。
+
+
+
+
+
+复合类型
+
+tuple
+
+创建tuple： 在小括号里，将值用逗号分开。tuple中的每一个位置都对应一个类型，tuple中各个元素类型可以不同。tuple是把几个类型组合到一起的最简单的方式。
+
+```rust
+let a = (1i32, false);
+let b = ("a", (1i32, 2i32));
+```
+
+如果元组中只包含一个元素， 应该在后面添加一个逗号， 以区分括号表达式和元组：  
+
+```rust
+let a = (0,); // a是一个元组,它有一个元素
+let b = (0); // b是一个括号表达式,它是i32类型
+```
+
+
+
+获取tuple中的值:  1.类似于python中的序列解包(模式匹配  pattern destructuring) 2. 直接获得指定位置的值，点表记法，后接元素的索引号。
 
 ````rust
 fn main(){
@@ -134,6 +501,453 @@ fn main(){
     println!("{},{},{}", some.0, some.1, some.2);
 }
 ````
+
+元组内部也可以一个元素都没有。 这个类型单独有一个名字， 叫unit (单元类型):
+
+```rust
+let empty: () = ();
+```
+
+它占用0内存空间，这和空结构体一样。 使用`std::mem::size_of::<i8>()`可以计算空间大小
+
+```rust
+fn main() {
+    println!("size of '()' {}", std::mem::size_of::<()>());
+}
+```
+
+
+
+struct
+
+和元组类似，但是struct中的每个元素都可以有自己的名字
+
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+}
+```
+
+每个元素之间采用逗号分开， 最后一个逗号可以省略不写。   类型依旧跟在冒号后面， 但是不能使用自动类型推导功能， 必须显式指定。  
+
+struct类型的初始化语法类似于json的语法， 使用“成员–冒号–值”的格式。  
+
+  ```rust
+  fn main() {
+      let p = Point {x: 0, y: 0};
+      println!("Point is at {} {}", p.x, p.y);
+  }
+  ```
+
+struct有一种简化的写法，如果有局部变量的名字和成员变量的名字恰好一致， 那么可以省略重复的冒号初始化
+
+```rust
+struct Point{
+    x: i32,
+    y: i32
+}
+
+fn main() {
+    // 刚好局部变量名字和结构体成员名字一致
+    let x = 10;
+    let y = 20;
+    // 下面是简略写法， 等同于 由冒号的写法 Point {x:x, y:y}
+    let p = Point {x, y};
+
+    println!("Point is at {} {}", p.x, p.y);
+}
+```
+
+获取结构体内部元素的方法， 1 加点的方式， 2 模式匹配
+
+```rust
+fn main() {
+    let x = 10;
+    let y = 20;
+    let p = Point {x, y};
+
+    let Point {x: px, y: py} = p;
+    println!("Point is at {} {}",px, py);
+    let Point {y, x} = p;  // 在模式匹配的时候 也可以使用简化写法, 会按照名字匹配
+    println!("Point is at {} {}",x, y);
+}
+```
+
+rust 允许使用一种简化 的语法赋值，使用另一个struct的部分成员。
+
+```rust
+struct Point3d {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+fn default() -> Point3d{
+    Point3d {x: 0, y: 0, z: 0}
+}
+
+fn main() {
+    // 使用default()函数初始化其他的元素 
+    // ..expr 这样的语法， 只能放在初始化表达式中，所有成员的最后最多只能有一个
+    let origin = Point3d {x: 5, ..default()};  // 赋值 给y，z
+    let point = Point3d {z: 1, x: 2, ..origin};   // 赋值给z
+}
+```
+
+
+
+tuple struct
+
+rust 有一种数据类型叫 tuple struct， 他是tuple和struct的混合。 区别在于 tuple struct 有名字， 而他的成员没有名字。
+
+```rust
+struct Color(i32, i32, i32);
+struct Point(i32, i32, i32);
+
+// they are defined as follows
+struct Color{
+    0: i32,
+    1: i32,
+    2: i32,
+}
+```
+
+虽然它们的内部结构是一样的，但是它们是完全不同的两个类型。   
+
+tuple、 struct、 struct tuple  的区别
+
+![image-20211225164531631](C:\Users\鸿博\AppData\Roaming\Typora\typora-user-images\image-20211225164531631.png)
+
+除了这些之外，他们没有区别了，整体对比
+
+```rust
+struct T1 {
+    v: i32  // define struct
+}
+
+struct T2(i32);  // define tuple struct
+
+fn main(){
+    let v1 = T1 { v: 1 };
+    let v2 = T2(1);          // init tuple struct
+    let v3 = T2 { 0: 1 };    // init tuple struct
+    
+    let i1 = v1.v;
+    let i2 = v2.0;
+    let i3 = v3.0;
+}
+```
+
+tuple struct有一个特别有用的场景， 那就是当它只包含一个元素的时候， 就是所谓的newtype idiom。  让我们非常方便地在一个类型的基础上创建了一个新的类型。  
+
+```rust
+fn main() {
+    struct 	Inches(i32);
+    
+    fn f1(value: Inches) {}
+    fn f2(value: i32) {}
+    
+    let v : i32 = 0;
+    f1(v);  // 编译不通过,'mismatched types'
+    f2(v);
+}
+```
+
+编译不通过是因为`Inches` 和 `i32`是不同的类型，函数调用参数不匹配。
+
+```rust
+fn type_alias() {
+    type I = i32;  // 当换成别名的时候就通过了
+    
+    fn f1(v : I) {}
+    fn f2(v : i32) {}
+    
+    let v : i32 = 0;
+    f1(v);
+    f2(v);
+}
+```
+
+这是因为通过type创建的只是一个新的**类型名称**，但这个类型**不是**全新的类型，而只是一个具体类型的**别名**。在编译器看来， 这个别名与原先的具体类型是一模一样的。 而使用`tuple struct`做包装， 则是创造了一个**全新的类型**， 它跟被包装的类型不能发生隐式类型转换， 可以具有不同的方法， 满足不同的trait， 完全按需而定。  
+
+
+
+enum
+
+枚举在rust中代表了`或`的类型关系。
+
+rust中的enum要强大很多， 它可以为每个成员指定附属的类型信息。
+
+Rust的enum中的每个元素的定义语法与struct的定义语法类似。 可以像空结构体一样， 不指定它的类型； 也可以像tuple struct一样， 用圆括号加无名成员； 还可以像正常结构体一样， 用大括号加带名字的成员。
+
+```rust
+enum Number {
+    Int(i32),
+    Float(f32),
+}
+```
+
+使用match语句读取enum内部数据的示例
+
+```rust
+enum Number {
+    Int(i32),
+    Float(i32),
+}
+
+fn read_num(num: &Number) {
+    match num {
+        // 如果匹配到了 Number::Int， value就是i32
+        &Number::Int(value) => println!("Integer {}", value),
+        // 如果匹配到了 Number::Float， value就是f32
+        &Number::Float(value) => println!("Float {}", value),
+    }
+}
+
+fn main() {
+    let n: Number = Number::Int(10);
+    read_num(&n);
+}
+
+```
+
+neum需要记住当前存贮的值的类型，在C语言中需要程序员自己记录，在rust 中则是编译器帮助你处理。所以我们不需要自己处理值的类型。
+
+我们查看类型的大小，可以看到 Number的类型是i32和f32中size最大的。`max（sizeof（i32）, sizeof（f32） ） =  max（4 byte， 4 byte） = 4 byte `  
+
+而它总共占用的内存是8 byte， 多出来的4 byte就是用于保存类型标记的。 之所以用4 byte， 是为了内存对齐。  
+
+```rust
+fn main() {
+    println!("Size of Number: {}", std::mem::size_of::<Number>());
+    println!("Size of i32:    {}", std::mem::size_of::<i32>());
+    println!("Size of f32:    {}", std::mem::size_of::<f32>());
+}
+```
+
+Rust标准库中有一个极其常用的enum类型`Option<T>`， 它的定义如下 :
+
+```rust
+enum Option<T> {
+    None,
+    Some(T),
+}
+```
+
+由于它实在是太常用， 标准库将Option以及它的成员Some、 None都加入到了Prelude中， 用户甚至不需要use语句声明就可以直接使用。它表示的含义是“要么存在、 要么不存在”。 比如 `Option<i32>`表达的意思就是“可以是一个i32类型的值， 或者没有任何值”。  
+
+
+
+
+
+## 第二章 语句和表达式
+
+表达式（Expression）语句（Statement）
+
+语句和表达式的区分方式是后面带不带分号`;` 。 如果**带了分号**， 意味着这是一条**语句**，它的类型是（） ； 如果**不带分号**， 它的类型就是**表达式**的类型。
+
+|        |          |          |
+| ------ | -------- | -------- |
+| 表达式 | 不带分号 | 产生值   |
+| 语句   | 带分号   | 不产生值 |
+
+
+
+### 语句 
+
+一个Rust程序， 是从main函数开始执行的。 而函数体内， 则是由一条条语句组成的。  
+
+表达式可以是语句的一部分， 反过来， 语句也可以是表达式的一部分。 一个**表达式**总是会**产生**一个**值**， 因此它必然有类型； 语句不产生值， 它的类型永远是（） 。 **如果把一个表达式加上分号， 那么它就变成了一个语句**； 如果把语句放到一个**语句块**中包起来， 那么它就可以被当成一个表达式使用。
+
+
+
+### 表达式
+
+每种表达式都可以嵌入到另外一种表达式中， 组成更强大的表达式。
+
+Rust的表达式包括`字面量表达式`、 `方法调用表达式`、 `数组表达式`、`索引表达式`、 `单目运算符表达式`、 `双目运算符表达式`等。
+
+Rust表达式又可以分为**左值**（lvalue） 和**右值**（rvalue） 两类。   左值接收值，右值产生值。
+
+|            |                 |                                                   |
+| ---------- | --------------- | ------------------------------------------------- |
+| 算术运算符 | + - * / %       |                                                   |
+| 比较运算符 | == != < > <= >= | 不支持连续比较a==b==c                             |
+| 位运算符   | ! & \| ^ << >>  |                                                   |
+| 逻辑运算符 | && \|\| !       | 支持短路运算                                      |
+| 赋值运算符 | =               | Rust规定， 赋值表达式的类型为unit， 即空的tuple() |
+|            |                 |                                                   |
+
+不支持 ++  -- 运算符 使用 +=1 -=1代替
+
+
+
+### 语句块表达式
+
+```rust
+// 语句块可以是表达式,注意后面有分号结尾,x的类型是()
+let x : () = { println!("Hello."); };
+// Rust将按顺序执行语句块内的语句,并将最后一个表达式类型返回,y的类型是 i32
+let y : i32 = { println!("Hello."); 5 };
+
+// 利用这样的特性来写返回值
+fn my_func() -> i32 {
+    // 各种语句
+    100  // 返回100
+}
+```
+
+
+
+### if else
+
+```rust
+if xxx {}
+else if xxx {}
+else {}
+```
+
+`if` 后续的结果语句块要求一定要用大括号包起来， 不能省略， 以便明确指出该if语句块的作用范围。 这个规定是为了避免“悬空else”导致的bug。   
+
+- if表达式的条件必须是bool类型的。不能是一个可以判定为真的值
+- if表达式中，与条件相关联的代码块叫做分支（arm）
+- 可选择在后面加上else表达式
+
+if 也是一个表达式
+
+```rust
+fn main()
+{
+    let condition = true;
+    let number = if condition { 5 } else { 6 }; // 注意这两个块中的数字，可以被返回
+    println!("the value of number is: {}", number);
+}
+```
+
+但是这种需要注意的是两个分支的表达式返回的类型必须一致，否则就会造成编译错误。如果else分支省略掉了， 那么编译器会认为else分支的类型默认为()。
+
+
+
+### loop
+
+使用loop表示一个无限死循环。  类似于while  true
+
+我们可以使用continue和break控制执行流程。 continue； 语句表示本次循环内， 后面的语句不再执行， 直接进入下一轮循环。break； 语句表示跳出循环， 不再继续。  
+
+另外， break语句和continue语句还可以在**多重循环**中选择跳出到哪一层的循环。  
+
+```rust
+fn main() {
+    // A counter variable
+    let mut m = 1;
+    let n = 1;
+    
+    'a: loop {
+        if m < 100 {
+            m += 1;
+        } else {
+            'b: loop {
+                if m + n > 50 {
+                    println!("break");
+                    break 'a;
+                } else {
+                    continue 'a;
+                }
+            }
+        }
+    }
+}
+
+```
+
+我们可以在loop while for循环前面加上“**生命周期标识符**”。 该标识符以单引号开头， 在内部的循环中可以使用break语句选择跳出到哪一层。  
+
+与if结构一样， loop结构也可以作为表达式的一部分。  
+
+在loop内部break的后面可以跟一个表达式， 这个表达式就是最终的loop表达式的值。 如果一个loop永远不返回， 那么它的类型就是“发散类型”。   
+
+```rust
+fn main() {
+    let v = loop {
+        break 10;
+    };
+    println!("{}", v);
+}
+
+fn main() {
+    let v = loop {};
+    println!("{}", v);
+}
+```
+
+
+
+
+
+### while
+
+while语句是带条件判断的循环语句。 其语法是while关键字后跟条件判断语句， 最后是结果语句块。  
+
+```rust
+fn main() {
+    let mut n = 1;
+
+    while n < 101 {
+        if n % 15 == 0 {
+            println!("fizzbuzz");
+        } else if n % 3 == 0 {
+            println!("fizz");
+        } else if n % 5 == 0 {
+            println!("buzz");
+        } else {
+            println!("{}", n);
+        }
+        n += 1;
+    }
+}
+```
+
+while语句中也可以使用continue和break来控制循环流程。  
+
+loop{}和while true{}循环有什么区别?
+
+loop和while true语句在运行时没有什么区别， 它们主要是会影响编译器内部的静态分析结果。  
+
+```rust
+let x;
+loop { x = 1; break; }
+println!("{}", x)
+// 以上语句在Rust中完全合理。 因为编译器可以通过流程分析推理出x=1； 必然在println！ 之前执行过， 因此打印变量x的值是完全合理的。
+
+let x;
+while true { x= 1; break; }
+println!("{}", x);
+// 上面的语句会有错误， while语句的执行跟条件表达式在运行阶段的值有关， 因此它不确定x是否一定会初始化， 于是它决定给出一个错误：use of possibly uninitialized variable， 也就是说变量x可能没有初始化。
+
+```
+
+
+
+### for循环
+
+rust的for循环不是 C的那种三段式的，而是像python那样的for循环。
+
+for循环的主要用处是利用迭代器对包含同样类型的多个元素的容器执行遍历， 如数组、 链表、 HashMap、 HashSet等。   
+
+```rust
+fn main () {
+    let array = &[1,2,3,4,5];
+    
+    for i in array {
+        println!("The number is {}", i);
+    }
+}
+```
+
+
+
+
 
 
 
@@ -209,87 +1023,9 @@ fn main(){
 
 
 
-if表达式
-
-```rust
-if 
-else if 
-else
-```
 
 
 
-- if表达式的条件必须是bool类型的。不能是一个可以判定为真的值
-- if表达式中，与条件相关联的代码块叫做分支（arm）
-- 可选择在后面加上else表达式
-
-if 也是一个表达式
-
-```rust
-fn main()
-{
-    let condition = true;
-    let number = if condition { 5 } else { 6 }; // 注意这两个块中的数字，可以被返回
-    println!("the value of number is: {}", number);
-}
-```
-
-
-
-循环
-
-loop 
-
-执行无限循环，在内部判断要不要继续执行。
-
-```rust
-fn main()
-{
-    let mut counter = 0;
-    let result = loop {
-        counter += 1;
-        
-        if counter == 10 {
-            break counter * 2;
-        }
-    };
-    println!("the result is: {}", result);
-}
-```
-
-
-
-while 循环
-
-先判断条件再执行循环
-
-```rust
-fn main()
-{
-    let mut number = 3;
-    while number != 0 {
-        println!("{}!", number);
-        number = number - 1;
-    }
-    println!("some !");
-}
-```
-
-for 循环
-
-```rust
-fn main() {
-    let a = [10 ,20 ,30 ,40 ,50];
-    
-    for element in a.iter() {
-        println!("the value is: {}", element);
-    }
-    
-    for number in (1..4).rev() {  // python 中Range的方式
-        println!("{}!", number);
-    }
-}
-```
 
 
 
@@ -1335,12 +2071,11 @@ crate
 	    hosting
 	    	add_to_waitlist
 	    	seat_at_table
-	    serving
-	   	take_order
-	   	server_order
+	   	serving
+	   		take_order
+	   		server_order
 ````
 
-其中一个文件中的， 结构其实是放在 crate这个隐式的根模块下面了
 
 
 ### 路径path
@@ -2308,164 +3043,4 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 ```
-
-
-
-### 何时使用panic!
-
-原则： 在定义一个可能失败的函数是的时候，优先考虑返回Result， 否则就返回`panic!`
-
-在编写示例，原型代码，测试等的时候可以使用`panic！`
-
-演示某些概念：unwrap
-
-原型代码：unwrap、except  给出明确的错误提示，方便后面处理
-
-测试代码中： 一旦报错就说明测试没有通过
-
-
-
-错误处理的指导建议
-
-当代码最终可能处于损坏状态时，最好使用`panic！`
-
-损坏状态（Bad state）：某些假设、保证、约定、或不可变性被打破时。例如非法的值，矛盾的值或空缺的值被传入代码。或者
-
-- 这种损坏状态并不是预期能够偶尔发生的事情
-- 在此之后，您的代码如果处于这种损坏状态就无法运行
-- 在你使用的类型中没有一个好的方法来将这些信息（处于损坏状态 ）进行编码
-
-使用场景
-
-调用你的代码，传入无意义的参数值：`panic!`
-
-调用外部不可控代码，返回非法状态，你无法修复：`panic!`
-
-如果失败时可预期的：`panic!`
-
-当你的代码对值进行操作，首先应该验证这些值：`panic!`
-
-
-
-为验证创建自定义类型
-
-创建新的类型，把验证逻辑放在构造实例的函数里
-
-
-
-## 泛型
-
-泛型：提高代码复用能力，处理重复代码的问题。
-
-泛型是具体类型或其他属性的抽象替代：你编写的代码不是最终的代码，而是一种模板，里面有一些占位符。而编译器在编译时将 占位符替换为具体的类型。
-
-```rust
-fn largest<T>(list: &[7]) -> T{...}  // 这里的T就是一个占位符， 即 类型参数
-```
-
-T 其实可以是任何合法的名称，但是一般是大写的单个字母。
-
-### 在函数的定义中使用泛型
-
-在函数中定义泛型的地方是 `参数类型`和`返回类型`。
-
-```rust
-fn largest<T>(list: &[T]) -> T{ // largest 拥有泛型T的参数list，并且list中的类型也是T，返回值的类型也是T
-    let mut largest = list[0];
-    for &item in list{
-        if item > largest {
-            largest = item;
-        }
-    }
-}
-```
-
-### 在结构体中的泛型
-
-```rust
-struct Point<T> {
-    x: T,
-    y: T,  // 两个类型相同，不能是不同类型
-}
-
-struct Point<T> {
-    x: T,
-    y: U,  // 两个类型不同
-}
-```
-
- 可以使用多个泛型的类型参数，但是太多类型参数时，需要代码重组为更小的单元。
-
-### 枚举中使用泛型
-
-```rust
-Option<T>, Result<T, E>
-
-enum Option<T> {
-    Some(T), // 正因为使用了泛型，所以some可以判断任何类型
-    None,
-}
-
-enum Result<T,E> {
-    Ok(T),
-    Err(E),
-}
-```
-
-
-
-### 方法的定义中使用泛型
-
-为struct或enum实现方法的时候，可在定义中使用泛型。
-
-```rust
-struct Point<T> {
-    x: T,
-    y: T,
-}
-
-impl<T> Point<T> { // impl后面的T 是针对Point后面的T，实现的x方法
-    fn x(&self) -> &T {
-        &self.x
-    }
-}
-impl Point<i32> {  // 针对具体类型实现的x方法， 其他类型没有实现此方法
-    fn x(&self) -> &i32 {
-        &self.x
-    }
-}
-```
-
-把T 放在impl关键字后，表示在类型T上实现方法（放在impl后说明这个方法是接受泛型参数的，此时你的参数据需要是泛型的（模板）， 如果指定了具体的参数类型，当然也不需要指定为泛型了）。
-
-```rust
-struct Point<T, U> {
-    x: T,
-    y: U,
-}
-
-impl<T, U> Point<T, U> {
-    // 这个函数首先TU是struct的泛型，VW 是Point另一个泛型的实现，而返回值T是从self中取，W是从other中取。两个参数共同拼凑成了一个Point返回
-    fn mixup<V, W>(self, other:Point<V, W>) -> Point<T, W> {
-        Point {
-            x: self.x,
-            y: other.y,
-        }
-    }
-}
-
-fn main() {
-    let p1 = Point {x:5, y:4};
-    let p2 = Point {x: "hello", y: "c"};
-    let p3 = p1.mixup(p2);
-
-    println!("p3.x = {} , p3.y = {}", p3.x, p3.y);
-}
-```
-
- 泛型代码的性能
-
-使用泛型的代码和使用具体类型的代码运行速度是一样的。
-
-因为单态化（monomorphization): 在编译时将泛型提替换为具体类型的过程。
 
