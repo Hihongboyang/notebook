@@ -967,16 +967,73 @@ fn main(){
 
 
 
-函数
+### 函数
 
-声明函数使用`fn`关键字
+声明函数使用`fn`关键字.函数可以有一系列的输入参数， 还有一个返回类型.
 
 ```rust
 fn main()
 { }
 ```
 
+Rust编写的可执行程序的入口就是fn main()函数。  
 
+```rust
+fn add1(t: (i32: i32)) -> i32 {
+    t.0 + t.1
+}
+
+fn add2((x,y) : (i32,i32)) -> i32 {
+	x + y
+}
+```
+
+函数的输入是一个tuple(i32, i32) 返回的是 i32值. 函数体内部是一个表达式, 这个表达式的值就是函数的返回值. 函数也可以不写返回类型,这时返回类型是unit(). 
+
+在Rust中， **每一个函数**都具有自己单独的类型， 但是这个类型可以自动转换到**fn类型**。 示例如下：  
+
+```rust
+fn main () {
+    // 先让func 指向 add1
+    let mut func = add1;
+    // 再重新赋值, 让func指向 add2
+    func = add2;  // 这里会报错,因为两个函数的类型不符
+}
+```
+
+虽然add1和add2有同样的参数类型和同样的返回值类型， 但它们是不同类型， 所以这里报错了。 修复方案是让func的类型为通用的fn类型即可：  
+
+```rust
+// 写法一,用 as 类型转换
+let mut func = add1 as fn((i32,i32))->i32;
+// 写法二,用显式类型标记
+let mut func : fn((i32,i32))->i32 = add1;
+```
+
+嵌套定义   Rust的函数体内也允许定义其他item， 包括静态变量、 常量、 函数、 trait、 类型、 模块等。 比如: 
+
+```rust
+fn test_inner() {
+	static INNER_STATIC: i64 = 42;
+    
+	// 函数内部定义的函数
+	fn internal_incr(x: i64) -> i64 {
+		x + 1
+	} 
+    
+    struct InnerTemp(i64);
+    impl InnerTemp {
+		fn incr(&mut self) {
+			self.0 = internal_incr(self.0);
+		}
+	} 
+    
+    // 函数体,执行语句
+	let mut t = InnerTemp(INNER_STATIC);
+	t.incr();
+	println!("{}", t.0);
+}
+```
 
 函数体中的语句和表达式
 
@@ -1022,6 +1079,116 @@ fn main(){
 ```
 
 
+
+### 发散函数
+
+Rust支持一种特殊的发散函数（Diverging functions） ， 它的返回类型是感叹号`!` 。 如果一个函数根本就不能正常返回， 那么它可以这样写：  
+
+```rust
+fn diverges() -> ! {
+    panic!("This function never returns!");
+}
+```
+
+发散类型的最大特点就是， 它可以被转换为任意一个类型. 为什么需要返回这样的类型呢?
+
+```rust
+let p = if x { 
+    panic!("error");
+} else {
+    100
+};
+```
+
+if else 中要求类型相同,  那么 panic!  就应该返回和100 相同的类型,这就是 `!`类型的作用了. 
+
+在Rust中， 有以下这些情况永远不会返回， 它们的类型就是！ 。
+
+- panic！ 以及基于它实现的各种函数/宏， 比如unimplemented！ 、unreachable!
+- 死循环loop{}；
+- 进程退出函数std::process::exit  以及类似的libc中的exec一类函数。  
+
+
+
+### main函数
+
+在大部分主流操作系统上， 一个进程开始执行的时候可以接受一系列的参数， 退出的时候也可以返回一个错误码。   
+
+Rust的设计稍微有点不一样， 传递参数和返回状态码都由单独的API来完成.
+
+```rust
+fn main () {
+    for arg in std::env:args() {
+        println!("Arg: {}", arg);
+    }
+    std::process::exit(0);  // 指定错误码
+}
+
+// 执行 test -opt1 opt2 -- opt3
+```
+
+读取环境变量， 可以用`std::env::var()` 以及`std::env::vars()`函数获得。   
+
+```rust
+fn main() {
+    for arg in std::env::args() {
+        match std::env:var(&arg) {
+            Ok(val) => println!("{}: {:?}", &arg, val),
+            Err(e) => println!("couldn't find environment {}, {}", &arg, e),
+        }
+    }
+    println!("All environment varible count {}", std::env::vars().count());
+}
+```
+
+var() 函数可以接受一个字符串类型参数， 用于查找当前环境变量中是否存在这个名字的环境变量， vars() 函数不携带参数， 可以返回所有的环境变量。  
+
+此前， Rust的main函数只支持无参数、 无返回值类型的声明方式，即main函数的签名固定为： fn main()  -> () 。  
+
+Rust设计组扩展了main函数的签名，使它变成了一个泛型函数， 这个函数的返回类型可以是任何一个满足Terminationtrait约束的类型， 其中（ ） 、 bool、 Result都是满足这个约束的， 它们都可以作为main函数的返回类型。   
+
+
+
+### const  fn
+
+函数可以用const关键字修饰， 这样的函数可以在编译阶段被编译器执行， 返回值也被视为编译期常量。  
+
+cube函数接受数字参数， 它会返回一个数字， 而且这个返回值本身可以用于给一个const常量做初始化， const常量又可以当成一个常量数组的长度使用。  
+
+```rust
+#![feature(const_fn)]
+
+const fn cube(num:usize) -> usize {
+    num * num * num
+}
+
+fn main() {
+    const DIM: usize = cube(2);
+    const ARR: [i32; DIM] = [0; DIM];
+    
+    println!("{:?}", ARR);
+}
+```
+
+
+
+
+
+## trait
+
+### 成员方法
+
+trait中可以定义函数。   
+
+```rust
+trait Shape {
+    fn area(&self) -> f64;
+}
+```
+
+所有的trait中都有一个隐藏的类型Self（大写S） ， 代表当前这个实现了此trait的具体类型。 trait中定义的函数， 也可以称作关联函数(associated function).
+
+如果函数的第一参数是 `self`, 这个参数可以称为 `receiver(接收者)`, 有receiver的称为 方法(method), 可以通过变量实例通过小数点调用(和python中的语法类似). 没有receiver的称为静态函数, 可以通过`::`双冒号调用. 两者没有本质区别.
 
 
 
