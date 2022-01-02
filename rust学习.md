@@ -38,9 +38,9 @@ registry = "git://mirrors.ustc.edu.cn/crates.io-index"
 
 
 
-## 变量
+## 第一章 变量
 
-变量声明
+### 变量声明
 
 ```rust
 let variable: i32 = 100;
@@ -93,7 +93,7 @@ fn test(confition: bool) {
 
 
 
-shadowing
+### shadowing
 
 可以使用相同的名字声明新的变量，新的变量就会shadow（隐藏）之前声明的同名变量，在后续的代码中这个变量名就是新变量。
 
@@ -106,7 +106,7 @@ fn main(){
 
 
 
-类型推导
+### 类型推导
 
 从上下文中的信息进行推导
 
@@ -127,7 +127,7 @@ fn main() {
 
 
 
-类型别名
+### 类型别名
 
 可以用type关键字给同一个类型起个别名（type alias）
 
@@ -154,7 +154,7 @@ type Double<T> = (T, Vec<T>); // 小括号包围的是一个 tuple, 参考后面
 
 
 
-静态变量
+### 静态变量
 
 rust中可以用static关键字声明静态变量
 
@@ -194,7 +194,7 @@ fn main() {
 
 
 
-常量
+### 常量
 
 常量在绑定一个值后也是不可变的。与不可变的变量的区别是：
 
@@ -209,7 +209,7 @@ const MAX_POINTS: u32 = 100_000;
 
 
 
-数据类型
+### 数据类型
 
 标量类型+复合类型
 
@@ -228,7 +228,7 @@ let guess:u32 = "42".parse().expect("Not a number");
 
 
 
-布尔类型
+#### 布尔类型
 
 布尔类型（bool）代表的是“是”和“否”的二值逻辑。它有两个值： true和false。一般用在逻辑表达式中，可以执行“与”“或”“非”等运算。
 
@@ -256,7 +256,7 @@ fn main() {
 
 
 
-char类型
+#### char类型
 
 它可以描述任何一个符合unicode标准的字符值。在代码中，单个的字符字面量用单引号包围。 
 
@@ -283,7 +283,7 @@ let r :&[u8;14] = br#"hello \n world"#;
 
 
 
-整数类型
+#### 整数类型
 
 各种整数类型之间的主要区分特征是: 有符号/无符号, 占据空间大小.
 
@@ -358,7 +358,7 @@ fn main() {
 
 
 
-浮点类型
+#### 浮点类型
 
 按占据空间大小区分，分别为f32和f64. 浮点类型的默认类型是 f64
 
@@ -416,7 +416,7 @@ fn main() {
 
 
 
-指针类型
+#### 指针类型
 
 rust对数据的组织操作有多种维度：
 
@@ -438,7 +438,7 @@ rust中有多种指针类型
 
 
 
-类型转换
+### 类型转换
 
 Rust对不同类型之间的转换控制得非常严格。必须显式的进行类型转换 以防止出现bug
 
@@ -470,14 +470,14 @@ as表达式允许的类型转换如表所示。 对于表达式e as U， e是表
 
 
 
-复合类型
+### 复合类型
 
-tuple
+#### tuple
 
 创建tuple： 在小括号里，将值用逗号分开。tuple中的每一个位置都对应一个类型，tuple中各个元素类型可以不同。tuple是把几个类型组合到一起的最简单的方式。
 
 ```rust
-let a = (1i32, false);
+let a: (i32, bool) = (1i32, false);
 let b = ("a", (1i32, 2i32));
 ```
 
@@ -518,7 +518,26 @@ fn main() {
 
 
 
-struct
+#### 数组
+
+数组中的每个元素的类型必须是相同的。 数组的长度也是固定的，声明之后不能改变。数组是stack上分配的单个块 的内存。
+
+```rust
+fn main(){
+    // 声明数组
+    let a[i32; 5] = [1,2,3,4,5];  // a[i32; 5] [类型； 长度]
+    
+    let a = [3; 5]; // a == [3,3,3,3,3] 初始化的方法
+    
+    let first = a[0]; // 访问数组元素
+}
+```
+
+如果访问的索引超出了数组的范围,那么  编译会通过并且不会报错, 运行时会报错!!!!!
+
+
+
+#### struct
 
 和元组类似，但是struct中的每个元素都可以有自己的名字
 
@@ -597,7 +616,7 @@ fn main() {
 
 
 
-tuple struct
+#### tuple struct
 
 rust 有一种数据类型叫 tuple struct， 他是tuple和struct的混合。 区别在于 tuple struct 有名字， 而他的成员没有名字。
 
@@ -617,7 +636,7 @@ struct Color{
 
 tuple、 struct、 struct tuple  的区别
 
-![image-20211225164531631](C:\Users\鸿博\AppData\Roaming\Typora\typora-user-images\image-20211225164531631.png)
+![image-20211225164531631](rust学习.assets/image-20211225164531631.png)
 
 除了这些之外，他们没有区别了，整体对比
 
@@ -673,7 +692,7 @@ fn type_alias() {
 
 
 
-enum
+#### enum
 
 枚举在rust中代表了`或`的类型关系。
 
@@ -949,25 +968,7 @@ fn main () {
 
 
 
-
-
-数组
-
-数组中的每个元素的类型必须是相同的。 数组的长度也是固定的，声明之后不能改变。数组是stack上分配的单个块 的内存。
-
-```rust
-fn main(){
-    let a[i32; 5] = [1,2,3,4,5];  // a[i32; 5] [类型； 长度]
-    
-    let a = [3; 5]; // a == [3,3,3,3,3] 初始化的方法
-    
-    let first = a[0]; // 访问数组元素
-}
-```
-
-
-
-### 函数
+## 第三章 函数
 
 声明函数使用`fn`关键字.函数可以有一系列的输入参数， 还有一个返回类型.
 
@@ -1058,6 +1059,16 @@ fn main(){
     }; 
 }
 ```
+
+函数的参数
+
+pararmeters  函数定义时的那个参数,
+
+arguments  函数调用时传进去的参数
+
+函数定义时 参数的类型必须指定.
+
+
 
 
 
@@ -1174,7 +1185,7 @@ fn main() {
 
 
 
-## trait
+## 第四章 trait
 
 ### 成员方法
 
@@ -1196,9 +1207,9 @@ trait Shape {
 
 
 
-rust中的所有权
+## 第五章 rust中的所有权
 
-什么是所有权？
+### 什么是所有权？
 
 在其他的语言中，都需要在运行时对计算机的内存进行管理。
 
@@ -1210,7 +1221,30 @@ rust中的所有权
 
 rust采用另一种方式来管理内存：所有权。内存管理的工作是在编译时完成的。
 
-所有权规则：
+
+
+### stack vs heap
+
+- stack 先进后出
+- heap 先进先出
+
+所有存储在Stack上的数据必须拥有已知的固定的大小...编译时大小未知的数据 或运行时大小可能发生变化的数据必须存放在heap上.....
+
+当把 数据放入heap时, 会需要请求一定数量的空间.. 这是操作系统控制的,在heap上找到一个足够大的空间,把他标记为在用, 然后返回一个指针, 就是空间的地址.
+
+当代码调用函数时, 值被传入到函数(也包括指向heap的指针),,,函数本地的变量被压到stack上, 当函数结束后, 这些值会从stack上弹出.
+
+所有权解决的问题:
+
+- 跟踪代码的哪些部分正在使用heap的哪些数据
+- 最小化heap上的重复数据量
+- 清理heap上未使用的数据以避免空间不足
+
+一旦你懂得所有权, 那么就不需要经常去想stack或heap了.. 但是知道管理heap数据是所有权存在的原因, 这有助于解释它为什么会这样工作.
+
+
+
+### 所有权规则：
 
 - 每个值都有一个变量，这个变量是该值的所有者
 - 每个值同时只能有一个所有者
@@ -1226,7 +1260,9 @@ fn main(){
 }// overflow the scope of s， s is disabled
 ```
 
-以字符串为例子，讲解所有权的概念
+
+
+### 以字符串为例子，讲解所有权的概念
 
 字符串类型有两种形式：
 
@@ -1335,7 +1371,7 @@ fn main(){
 
 
 
-所有权和函数
+### 所有权和函数
 
 将值传递给函数和将值传递给变量，产生的效果是相似的。传递给函数只会发生两种情况：移动或者复制。
 
@@ -1401,7 +1437,7 @@ fn main(){
     println!("the length of '{}' is {}", s1, len);
 }
 
-fn calvulate_length(s: &String)->usize{
+fn calculate_length(s: &String)->usize{
     s.len() // 超出作用域 但并不清理存储空间，因为并未获得所有权
 }
 ````
@@ -1416,7 +1452,7 @@ fn main(){
     println!("the length of '{}' is {}", s1, len);
 }
 
-fn calvulate_length(s: &mut String)->usize{
+fn calculate_length(s: &mut String)->usize{
     s.push_str(", world");
     s.len() // 超出作用域 但并不清理存储空间，因为并未获得所有权
 }
@@ -1444,7 +1480,7 @@ fn main(){
 }
 ````
 
-另一个限制：不可以同时拥有一个可变和一个不可变的引用。多个不可变引用是可以的。
+另一个限制：不可以同时拥有一个可变和一个不可变的引用(同一个变量)。多个不可变引用是可以的。
 
 引用有引发悬空指针的问题
 
@@ -1461,7 +1497,7 @@ fn dangle() -> &String{
 
 
 
-字符串切片
+### 字符串切片
 
 字符串切片是指字符串中一部分内容的引用。
 
@@ -1506,7 +1542,7 @@ fn main() {
     let my_string = String::from("Hello world");
     let wordIndex = first_world(&my_string[..]);  // 这里的..
     
-    let my_string_literal = "hello_world";
+    let my_string_literal = "hello_world";  // 本身就是字符串切片类型
     let wordIndex = first_world(my_string_literal);
 }
 
@@ -1526,7 +1562,7 @@ fn first_world(s: &str) -> &str{ // 采用字符串切片
 
 
 
-## `rust`中的`struct`
+##  第六章 `rust`中的`struct`
 
 什么是struct？ 结构体，自定义的数据类型，为相关联的值命名，打包=>有意义的组合
 
@@ -1684,8 +1720,7 @@ fn main()
     prinfln!("{}", area(w, l));
 }
 
-fn area(wigth: u32, length: u32)
-{
+fn area(wigth: u32, length: u32) -> u32{
     wigth * length
 }
 ```
@@ -1884,7 +1919,7 @@ fn main(){
 
 ------
 
-## 枚举与模式匹配
+## 第七章 枚举与模式匹配
 
 ### 定义枚举
 
@@ -1950,7 +1985,7 @@ enum IpAddr {
     V4(u8,u8,u8,u8),  // 在变体中指定就可以向其中存储数据
     V6(String),
 }
-
+ 
 fn main() {
     let home = IpAddrKind::V4(127,0,0,1);
     let loopback = IpAddrKind::V6(String::from("::1"));
@@ -2010,9 +2045,13 @@ fn main() {
 }
 ````
 
+不能将 Option(i8) 当成 i8使用, 若想按照 i8 使用, 必须先将它转换为i8.  
+
+有了Option之后, 如果一个变量的类型不是Option 那他必然是有值的,不存在空值的问题,  如果是Option类型, 则必须转换后使用.
 
 
-## match
+
+### match
 
 允许一个值和一系列模式进行匹配，并执行匹配的模式对应的代码。
 
@@ -2083,18 +2122,17 @@ fn main() {
 
 ```
 
-
-### 匹配Option值
+#### 匹配Option值
 
 ```rust
 fn main() {
-    let five = Some(6);
+    let five = Some(5);
     let six = plus_one(five);
     let none = plus_one(None);
 }
 
 fn plus_one(x: Option<i32>) -> Option<i32>{
-    match x{
+    match x {
         None => None,
         Some(i) => Some(i+1),
     } // 返回的是Option对象
@@ -2120,7 +2158,7 @@ fn main() {
 
 
 
-#### if let一个简单的控制流
+### if let一个简单的控制流
 
 只关心一种匹配而忽略其他匹配的情况。相当于只有一个 if 剩下都是else
 
@@ -2144,7 +2182,7 @@ fn main() {
 
 
 
-## Package crate module
+## 第八章 Package crate module
 
 rust的代码组织包含什么内容：
 
@@ -2164,7 +2202,7 @@ rust的代码组织包含什么内容：
 
 crate的类型：
 
-1. `binary`
+1. `binary` 二进制
 2. `library`
 
 crate root:
@@ -2203,7 +2241,9 @@ carte的作用
 
 将相关功能组合到一个作用域内，便于在项目间进行共享。防止命名冲突。
 
-#### module来控制作用域和私有性
+
+
+### module来控制作用域和私有性
 
 作用： 
 
@@ -2268,6 +2308,8 @@ pub fn eat_at_restaurant() {
     front_of_house::hosting::add_to_waitlist(); // 相对路径
 }
 ```
+
+
 
 #### 私有边界
 
@@ -2384,7 +2426,7 @@ mod back_of_house {
 }
 ```
 
-#### use 关键字
+### use 关键字
 
 使用use关键字将路径导入到作用域内，这仍然遵守私有性规定，(导入的模块需要是公有的，导入之后，在当前的模块仍然是私有的，除非加上`pub`关键字)
 
@@ -2431,7 +2473,7 @@ rand = "0.5.5"
 
 标准库（`std`）也被当作外部包使用。但是不用 在`cargo.toml`中添加std包
 
-使用嵌套路径整理重复的导入
+使用嵌套路径 整理重复的导入
 
 `路径相同的部分::{路径差异的部分}`
 
@@ -2452,10 +2494,10 @@ use std::io::*
 
 模块定义时，如果模块名后面是`;`，而不是代码块
 
-- rust会从与模块同名的文件中加载内容
+- rust会从与模块同名的**文件**中加载内容
 - 模块树的结构不会变化
 
-## 常用的集合
+## 第九章 常用的集合
 
 分配在堆内存上的数据类型，可以动态改变大小。与列表类似吧。只能存放相同类型的数据。
 
@@ -2474,7 +2516,7 @@ use std::io::*
 
    ````rust
    fn main() {
-       let v: Vec<i32> = Vec::new(); // 为inwei我们使用Vec::new()创建的是空的vector，无法进行类型推断，所以需要指定类型。指定类型是为了分配存储空间。
+       let v: Vec<i32> = Vec::new(); // 因为我们使用Vec::new()创建的是空的vector，无法进行类型推断，所以需要指定类型。指定类型是为了分配存储空间。
    }
    ````
 
@@ -2528,7 +2570,7 @@ fn main() {
 }
 ```
 
-所有权和借用规则在Vector中同样适用：不能在同一作用域内同时拥有可变和不可变引用。这主要是为了防止在可变借用中，意外修改Vector后重新分配存储空间导致引用失效。
+所有权和借用规则在Vector中同样适用：不能在同一作用域内**同时拥有可变和不可变引用**。这主要是为了防止在可变借用中，意外修改Vector后重新分配存储空间导致引用失效。
 
 ```rust
 fn main() {
@@ -2561,7 +2603,7 @@ fn main() {
 
 
 
-#### 使用enum来存储多种数据类型
+### 使用enum来存储多种数据类型
 
 Enum的变体可以附加不同类型的数据
 
@@ -2585,7 +2627,7 @@ fn main() {
 
 
 
-## 字符串
+### 字符串
 
 rust字符串使人困扰的原因
 
@@ -2593,7 +2635,7 @@ rust字符串使人困扰的原因
 - 字符串数据结构复杂
 - rust中的字符串utf-8
 
-### 什么是字符串
+#### 什么是字符串
 
 byte类型的集合，并且提供一些方法，能将byte解析为文本。
 
@@ -2607,7 +2649,7 @@ byte类型的集合，并且提供一些方法，能将byte解析为文本。
 
 此类型来自`标准库`而不是核心语言层面。存储在堆上可以增长、可修改、可拥有。使用utf-8编码。
 
-### 其他类型的字符串
+#### 其他类型的字符串
 
 rust标准库中包含了很多其他的字符串类型，例如： `OsString、OsStr、CString、CStr`
 
@@ -2618,7 +2660,7 @@ library crate针对存储字符串可提供更多的选项
 
 
 
-### 创建一个新的字符串（String）
+####  创建一个新的字符串（String）
 
 很多`Vec<T>`的操作都可用于String。创建方法
 
@@ -2646,7 +2688,9 @@ fn main() {
 }
 ````
 
-### 更新String
+
+
+####  更新String
 
 `push_str()`方法：把一个字符串**切片**附加到String
 
@@ -2665,7 +2709,7 @@ fn main() {
 pub fn push_str(&mut self, string: &str)
 ```
 
-`push()` 把单个字符附加到String
+`push()` 把**单个字符**附加到String
 
 ```rust
 s.push('p')  // 注意单个字符用''
@@ -2724,7 +2768,7 @@ fn main() {
 
 
 
-### 对String按索引的形式进行访问
+#### 对String按索引的形式进行访问
 
 按索引的语法访问String的某部分，会报错！！！！
 
@@ -2795,9 +2839,9 @@ fn main() {
 
 
 
-## 创建hashmap
+### 创建hashmap
 
-创建Hashmap： new()函数
+创建Hashmap： new()函数 
 
 添加数据： insert()方法
 
@@ -2819,7 +2863,7 @@ fn main() {
 
 ```
 
-- 由于hashmap用的不较少，不在prelude中，需要手动导入
+- 由于hashmap用的比较少，不在prelude中，需要手动导入
 - 标准库对其支持较少，没有内置的宏来创建hashmap
 - 数据存储在heap上
 - hashmap是同构的，这是指一个hashmap中：
@@ -2962,7 +3006,7 @@ fn main() {
 
 
 
-## panic! 不可恢复的错误
+## 第十章 panic! 不可恢复的错误
 
 rust的可靠性:  大部分情况下, 在编译时提示错误并进行处理.
 
@@ -2980,7 +3024,7 @@ rust没有类似异常的机制(统一处理上面所述的错误)
 
 当panic! 宏执行时:
 
-- 程序会打印一个错误信息
+-  程序会打印一个错误信息
 - 展开 (unwind) 清理调用栈(Stack) ------也可以选择中止(abort)调用栈
 - 退出程序
 
@@ -3057,7 +3101,7 @@ open会返回一个Result枚举`std::result::Result<std::fs::File, std::io::Erro
 fn main() {    
 	let f = File::open("hello.txt");
     let f = match f {
-        Ok(file) => file,
+        Ok(file) => file, 
         Err(error)=> {
             panic!("Error opening file {:?}", error)
         }
@@ -3101,7 +3145,7 @@ fn main() {
     };// unwrap 相当于上方代码的错误.
     
     let f = File::open("hello.txt").unwrap();  //当成功时返回OK中的信息,失败时返回错误
-    let f = File::open("hello.txt").except("文件无法打开");  // 可以返回指定错误信息.unwrap不可以
+    let f = File::open("hello.txt").expect("文件无法打开");  // 可以返回指定错误信息.unwrap不可以
 }
 ```
 
@@ -3173,6 +3217,8 @@ let mut f = File::open("hello.txt")?;
 
 即当函数处理成功的时候, 返回处理成功的值,并且继续向下执行, 当返回错误的时候, 则直接返回错误(所以要求函数的返回值必须是`Result`枚举). 但是因为执行成功时会继续向下执行,所以当我们要返回时需要显示的使用`Ok`进行包裹.
 
+
+
 #### ?与from
 
 `Trait std::convert::From`上的from函数用于错误之间的转换.
@@ -3205,9 +3251,240 @@ fn main(){
 
 ```rust
 use std::error::Error;
+use std::fs::File
 fn main() -> Result<(), Box<dyn Error>> {
     let f = File::open("hello.txt")?;
     Ok(())
 }
 ```
+
+
+
+### 什么时候使用panic！
+
+大体原则：
+
+- 在定义一个可能失败的函数时，有先考虑返回Result，
+- 否则就返回 panic! 
+
+编写示例， 原型代码， 测试   适合使用panic！
+
+如果有时你比编译器掌握更多的信息， 比如可以确定Result 只会返回Ok，就可以使用unwrap 包装。
+
+
+
+### 错误处理的建议
+
+当代码最终可能处于损坏状态的时候， 最好使用panic!
+
+损坏状态（bad state) : 某些假设、保证、约定、或不可变性被打破时
+
+- 例如非法的值、矛盾的值 或空缺的值被传入代码
+- 或下面中的一条：
+- - 这种损坏状态并时不是预期能够偶尔发生的事情
+  - 在此之后，代码如果处于这种损坏状态就无法运行
+  - 在使用的类型中没有一个好的方法来将这些信息（处于损坏状态）进行编码。
+
+使用场景
+
+调用你的代码， 而传入无意义的值 panic！
+
+使用了外部代码，返回了非法状态，你无法修复 panic!
+
+如果失败是可预期的  Result
+
+当代码要对值进行操作时， 首先应该验证这些值 panic!
+
+例子 建立新类型，完成对输入参数的验证， 创建新类型可以完成在每次创建类型实例的时候都完成验证
+
+```rust
+pub struct Guess {
+    value: i32,  // 私有的参数，只能通过new方法创建
+}
+
+impl Guess {
+    pub fn new(value: i32) -> Guess {
+        // 进行检查
+        if value < 1 || value > 100 {
+            panic!("Guess value must be between 1 and 100, got {}", value);
+        }
+
+        Guess { value }  //返回创建的实例
+    }
+
+    pub fn value(&self) -> i32 {
+        self.value  // 提供获取数值的方法
+    }
+}
+
+fn main() {
+    loop {
+        let guess = "32";
+        let guess: i32 = match guess.trim().parse() {
+            Ok(num) => num,
+            Err(_) => continue,
+        };
+
+        let guess = Guess::new(guess);
+    }
+}
+```
+
+
+
+## 第十一章  泛型和生命周期
+
+#### 消除重复的代码
+
+消除重复的步骤
+
+1. 识别重复的代码
+2. 提取重复的代码到函数体中， 并在函数签名中指定函数的输入和返回值
+3. 将重复的代码使用函数调用进行替换
+
+### 泛型的功能
+
+泛型： 提高代码的复用能力 -------处理重复代码的问题
+
+泛型是具体类型或其他属性的抽象代替：
+
+- 使用泛型编写的代码不是最终的代码， 而是一种模板， 里面有一些“占位符”。
+- 编译器在编译时将 “占位符” 替换为**具体的类型**
+
+```rust
+fn largest<T>(list: &[T]) -> T {...}
+```
+
+如上例所示 类型的参数通常是一个大写字母，通常使用T来代替
+
+
+
+### 函数定义中使用泛型
+
+```rust
+fn largest<T>(list: &[T]) -> T { // 使用泛型代替函数签名
+    let mut largest = list[0];
+    for &item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+    largest
+}
+
+fn main() {
+    let number_list = [32, 56, 23, 63, 220];
+    let result = largest(&number_list);
+    println!("The largest number is {}", result);
+
+    let char_list = vec!['y', 'm', 'a', 'q'];
+    let result = largest(&char_list);
+    println!("The larest cahr is {}", result); 
+}
+```
+
+
+
+### 结构体中的泛型
+
+结构体中可以为每个成员都指定类型。所以也可以精准的控制每个成员的泛型
+
+```rust
+struct Point<T> {
+    x: T,
+    y: T, 
+}
+
+fn main() {
+    let integer = Point {x:5, y:7};
+    let string = Point {x:'a', y:'b'};  // 此时x,y 是同一种类型的
+}
+```
+
+```rust
+struct Point<T, U> {
+    x: T,
+    y: U, 
+}
+
+fn main() {
+    let integer = Point {x:5, y:'c'}; // 此时x,y 可以是不同类型的
+}
+```
+
+### 枚举中使用泛型
+
+```rust
+enum Option<T> {
+    Some(T),
+    None,
+}
+
+enum Result<T, E> {
+    Ok(T),
+    Err(E),
+}
+```
+
+
+
+### 方法的定义中使用泛型
+
+```rust
+struct Point<T> {
+    x:T,
+    y:T,
+}
+
+impl<T> Point<T> {  // 此方法所有类型都有
+    fn x(&self) -> &T {
+        &self.x
+    }
+}
+
+impl Point<i32> {  // 只有在i32的类型上才有方法x1
+    fn x1(&self) -> &i32 {
+        &self.x
+    }
+}
+```
+
+将T 放在impl关键字后， 表示在类型T上实现方法。指定具体类型后就是对具体类型实现的方法，其他类型不可以调用。
+
+struct 中的**泛型参数**可以和**方法的泛型类型参数**不同
+
+```rust
+struct Point<T, U> {
+    x:T,
+    y:U,
+}
+
+impl<T, U> Point<T, U> {
+    // 此处的方法的泛型和struct中泛型类型就不同。 但是我认为这里主要是以为输入了一个新的不同类型的对象，并且要使用新对象里的泛型，所以才使用新的泛型。
+    fn mixup<V, W>(self, other: Point<V, W>) -> Point<T, W> {
+        Point {
+            x: self.x,
+            y: other.y,
+        }
+    }
+}
+
+fn main() {
+    let p1 = Point { x:5, y: 4};
+    let p2 = Point { x: "Hello", y: 'c' };
+    let p3 = p1.mixup(p2);
+
+    println!("p3.x = {}, p3.y = {}", p3.x, p3.y);
+}
+```
+
+
+
+
+
+
+
+
+
+
 
