@@ -450,7 +450,7 @@ fn main() {
 }
 ```
 
-使用as进行强制的类型转换。并且只允许编译器认为合理的类型转换， 任意类型的转换也是不允许的，比如 将一个非数字字符转换为数字。有些时候， 甚至需要连续写多个as才能转成功， 比如&i32类型就不能直接转换为*mut i32类型， 必须像下面这样写才可以：  
+使用as进行强制的类型转换。并且只允许编译器认为合理的类型转换， 任意类型的转换也是不允许的，比如 将一个非数字字符转换为数字。有些时候， 甚至需要连续写多个as才能转成功， 比如&i32类型就不能直接转换为*mut i32类型， 必须像下面这样写才可以:
 
 ```rust
 fn main() {
@@ -1199,9 +1199,7 @@ trait Shape {
 
 所有的trait中都有一个隐藏的类型Self（大写S） ， 代表当前这个实现了此trait的具体类型。 trait中定义的函数， 也可以称作关联函数(associated function).
 
-如果函数的第一参数是 `self`, 这个参数可以称为 `receiver(接收者)`, 有receiver的称为 方法(method), 可以通过变量实例通过小数点调用(和python中的语法类似). 没有receiver的称为静态函数, 可以通过`::`双冒号调用. 两者没有本质区别.
-
-
+如果函数的第一参数是 `self`, 这个参数可以称为 `receiver(接收者)`, **有receiver的称为 方法(method), 可以通过变量实例通过小数点调用(和python中的语法类似). 没有receiver的称为静态函数, 可以通过`::`双冒号调用**. 两者没有本质区别.
 
 
 
@@ -2690,7 +2688,7 @@ fn main() {
 
 
 
-####  更新String
+####  更新String	
 
 `push_str()`方法：把一个字符串**切片**附加到String
 
@@ -3132,7 +3130,7 @@ fn main() {
 }
 ```
 
-match的简化形式
+match的简化形式  unwrap+expect
 
 ```rust
 fn main() {    
@@ -3334,7 +3332,7 @@ fn main() {
 
 ## 第十一章  泛型和生命周期
 
-#### 消除重复的代码
+### 消除重复的代码
 
 消除重复的步骤
 
@@ -3480,11 +3478,664 @@ fn main() {
 
 
 
+### Trait
+
+实现Trait是为了告诉编译器---某些类型具有哪些并且可以与其他类型共享的功能.
+
+- Trait 是为了 抽象的定义共享行为
+- Trait bounds(约束): 泛型类型参数 要求  为实现了特定行为的类型
+- Trait 与其他语言中的 **接口** 类似, 但还是有些区别的
+
+#### 定义一个Trait
+
+Trait:  把方法签名 放在一起, 来定义实现某种目的所必需的一组行为.
+
+- 使用关键字trait
+- 只有方法签名, 没有具体实现
+- 一个trait可以有多个方法, 每个方法签名占一行, 以; 结尾
+- 实现该trait的类型必须提供具体的方法实现
+
+```rust
+pub trait Summary {
+    fn summarize(&self) -> String;
+    fn summarize1(&self) -> String;
+}
+```
+
+#### 在类型上实现trait
+
+也使用 impl, 
+
+```rust
+impl XXXX for Tweet {...}  // 为Tweet 类型实现某个trait
+```
+
+在impl块中对 Trait里的方法签名进行具体的实现, 但也不一定, 可以在trait中进行实现,以提供默认的执行逻辑.
+
+```rust
+pub trait Summary {
+    fn summarize(&self) -> String; // 定义trait
+}
+
+pub struct NewsArticle {
+    pub headline: String,
+    pub location: String,
+    pub author: String,
+    pub content: String,
+}
+
+impl Summary for NewsArticle { // 实现trait
+    fn summarize(&self)-> String {
+        format!("{}, by {} ({})", self.headline, self.author, self.location)
+    }
+}
+
+pub struct Tweet {
+    pub username: String,
+    pub content: String,
+    pub reply: bool,
+    pub retweet: bool, 
+}
+
+impl Summary for Tweet { // 实现trait
+    fn summarize(&self) -> String {
+        format!("{}: {}", self.username, self.content)
+    }
+}
+
+
+```
+
+```rust
+use hello::Summary;  // trait需要引入
+use hello::Tweet;
+
+
+fn main() {
+    let tweet = Tweet {
+        username: String::from("horse_ebooks"),
+        content: String::from("of course, as you probably already know, pople"),
+        reply: false,
+        retweet: false,
+    };
+
+    println!("1 new tweet: {}", tweet.summarize())  // 引入trait才能使用
+}
+
+```
 
 
 
+### 实现trait约束
+
+可以在某个类型上实现某个trait 的前提条件是:  这个类型 或 这个trait是在本地crate里定义的.
+
+就像上面的例子我们必须使用use 引入trait后才能使用
+
+无法为外部类型来实现外部的trait (不能在当前代码中为 外部引入的 类型  实现外部的trait, 这两只中至少有一个是在当前文件中定义的才行),
+
+此规则确保其他人的代码不能破坏您的代码, 反之亦然.
 
 
 
+### 默认实现
 
+trait可以有自己的默认实现方式 给类型使用.
+
+```rust
+pub trait Summary {
+    fn summarize(&self) -> String{ // 定义trait
+        String::from("(Read more...)")
+    }
+}
+```
+
+默认实现的方法可以调用trait 中其他的方法, 即使这些方法没有默认实现
+
+注意:无法在重载方法中调用默认实现
+
+
+
+### trait 作为参数
+
+impl trait: 适用于简单情况
+
+```rust
+pub fn notify(item: impl Summary) { // 要求参数必须实现了 Summary trait
+    println!("Breaking news! {}", item.summarize());
+}
+```
+
+trait bound: 适合复杂语法
+
+```rust
+pub fn notify<T: Summary>(item: T, item2: T) { // 要求参数必须实现了 Summary trait
+    println!("Breaking news! {}", item.summarize());
+}
+```
+
+使用 + 号 指定多个trait
+
+```rust
+pub fn notify(item: impl Summary + Display) { // 要求参数必须实现了 Summary Display trait
+    println!("Breaking news! {}", item.summarize());
+}
+
+pub fn notify<T: Summary + Display>(item: T) { // 要求参数必须实现了 Summary trait
+    println!("Breaking news! {}", item.summarize());
+}
+```
+
+使用where 语句指定trait
+
+在where 子句后面指定trait
+
+```rust
+pub fn notify<T, U>(item: T, item2: T) -> String
+where
+    T: Summary + Display,
+    U: Clone + Debug,
+{
+    format!("Breaking news! {}", item.summarize())
+}
+```
+
+
+
+### trait作为返回值
+
+也是使用impl 来实现,但是要注意, 返回值的类型要是一样的, 如下所示的例子虽然 NewsArticle和Tweet都实现了 Summary的trait 但是 是会报错的.
+
+```rust
+pub fn notify1(flag: bool) -> impl Summary {
+    if flag {
+        NewsArticle {
+            headline: String::from("penguins win the Stanley"),
+            content: String::from("the pittsburgh penguins once"),
+            author: String::from("Iceburgh"),
+            location: String::from("Pittsbrugh, PA, USA"),
+        }
+    } else {
+        Tweet {
+            username: String::from("some1"),
+            content: String::from("some2"),
+            reply: false,
+            retweet: true,
+        }
+    }
+}
+```
+
+
+
+```rust
+fn largest<T>(list: &[T]) -> T { // 使用泛型代替函数签名
+    let mut largest = list[0];
+    for &item in list {
+        if item > largest {
+            largest = item;
+        }
+    }
+    largest
+}
+
+fn main() {
+    let number_list = [32, 56, 23, 63, 220];
+    let result = largest(&number_list);
+    println!("The largest number is {}", result);
+
+    let char_list = vec!['y', 'm', 'a', 'q'];
+    let result = largest(&char_list);
+    println!("The larest cahr is {}", result); 
+}
+```
+
+使用Tarit bound 有条件的实现方法
+
+在使用泛型类型参数的impl 块上使用 trait bound, 我们可以有条件的为实现了特定trait 的类型来实现方法.
+
+```rust
+struct Pair<T> {
+    x: T,
+    y: T,
+}
+
+impl<T> Pair<T> {  // 无论T是什么类型都有new 方法
+    fn new(x: T, y: T) -> Self {
+        Self {x, y}
+    }
+}
+
+impl <T: Display + PartialOrd> Pair<T> { // 当类型实现了 Display + PartialOrd时才有如下的方法
+    fn cmp_display(&self) {
+        if self.x >= self.y {
+            println!("The largest member is x= {}", self.x);
+        } else {
+            println!("The largest member is y= {}", slef.y);
+        }
+    }
+}
+```
+
+也可为 实现了**其他trait** 的**任意类型**有条件的**实现某个trait**
+
+```rust
+impl<T: fmt::Display> ToString for T {} // 为所有实现了Display的类型  实现了ToString Trait
+```
+
+
+
+### 生命周期
+
+rust的每个**引用**都有自己的生命周期.  (每个引用都有自己有效的范围, 当超出这个范围的时候,引用就失效了, 就会报错)
+
+生命周期: 引用保持有效的作用域. (复杂情况我们需要手动标记 引用的作用范围, 因为编译器并不是万能的) 
+
+大多数情况: 生命周期是隐式的, 可被推断的.  (简单情况 编译器可以自己推断)  
+
+当引用的生命周期可能以不同的方式互相关联时: 需要手动标注生命周期.
+
+
+
+```rust
+fn main() {
+    let r;               // |r 的作用域范围
+    {                    // |   
+        let x = 5;       // |   |x的作用域范围
+        r = &x;          // |   |x
+    }                    // |
+    println!("r: {}", r);// |
+}
+```
+
+x的作用域范围是比r要小的, 在出了x作用域范围后, x就失效了, r对他的引用也失效了,,所以println!的打印语句会报错.
+
+### rust中的借用检查器
+
+rust编译器的借用检查器用来  比较**作用域**来判断 所有的**借用**是否合法
+
+```rust
+fn main() {
+    let string1 = String::from("abcd");
+    let string2 = "xyz";
+    
+    let result = longest(string1.as_str(), string2);
+    
+    println!("The longest string is {}", result);
+}
+
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    // 这里标注了生命周期,标注了两个参数和返回值的生命周期, 并且参数的生命周期,不短于返回值的生命周期. 借用检查器值检查函数签名中对生命周期的约束,不会检查函数的逻辑.
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}
+```
+
+
+
+### 生命周期标注语法
+
+生命周期的标注**不会改变**引用的**生命周期长度**.
+
+当**指定了**泛型生命周期参数, 函数可以接收带有**任何**生命周期的引用
+
+生命周期的标注: 描述了多个引用的生命周期间的关系,但**不影响生命周期**
+
+
+
+例子
+
+```rust
+&i32         // 一个引用
+&'a i32      // 带有显式生命周期的引用
+&'a mut i32  // ~的可变引用
+
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+    // 'a代表了x和y中生命周期较短的那个
+    if x.len() > y.len() {
+        x
+    } else {
+        y
+    }
+}
+```
+
+单个生命周期的标注是没有意义的.  生命周期的标注就是为了处理多个引用之间的关系
+
+从函数返回引用时, 返回类型的生命周期参数需要与其中的一个参数的生命周期匹配. 如果返回的引用没有指向任何参数, 那么它只能引用函数内创建的值: 这时引用就是悬垂引用, 该值在函数结束时就会出作用域.
+
+```rust
+fn logest<'a>(x: &'a str, y: &'a str) -> String {
+    let result = String::from("abc");
+    result  // 直接将变量的所有权交出去就可以了
+}
+```
+
+#### struct定义中的生命周期标注
+
+当struct中有 引用类型的时候, 就需要在每个引用上添加生命周期标注.
+
+```rust
+struct ImportantExcerpt<'a> {
+    part: &'a str,
+}
+
+fn main() {
+    let novel = String::from("Call me Ishmeal. Some years ago....");
+
+    let first_sentence = novel.split('.').next().expect("Could not found a '.'");
+
+    let i = ImportantExcerpt{  // 因为i存在的时间比first_sentence短,在其作用域内都有效所有不会有问题
+        part: first_sentence
+    };
+
+}
+```
+
+#### 生命周期的省略
+
+在rust引用分析中所编入的模式称为生命周期省略规则. 只要代码符合情况,就不用标注生命周期, 这些规则不用开发者遵守,编译器会处理.
+
+生命周期省略规则不会提供完整的推断:  如果应用规则以后, 引用的生命周期仍然模糊不清=>发生编译错误....解决办法就是 添加生命周期标注. 
+
+生命周期省略规则
+
+编译器使用3个规则在没有显式标注生命周期的情况下, 来确定引用的生命周期
+
+规则1  应用于输入生命周期.. 规则 2,3 应用于输出生命周期.. 如果应用了3个规则之后, 仍然无法确定引用的生命周期=>编译器会报错.. 这些规则适用于 fn定义和 impl块
+
+规则1:  每个引用类型的参数都有自己的生命周期
+
+规则2: 如果只有1个输入生命周期参数, 那么该生命周期被赋给所有的输出生命周期参数
+
+规则3: 如果有多个输入生命周期参数, 但其中一个是 &self 或&mut self, 那么self的生命周期会被赋给所有的输出生命周期参数
+
+
+
+#### 方法定义中的生命周期标注
+
+在struct 上使用生命周期实现方法, 语法和泛型参数语法一致
+
+在哪声明和使用生命周期参数, 依赖于:  生命周期参数是否和字段\ 方法的参数或返回值有关.
+
+struct 字段的生命周期名:
+
+-  在impl 后声明
+- 在struct 名 后使用
+- 在这些生命周期 是struct 类型的一部分
+
+impl 块内的方法签名中:
+
+- 引用必须绑定于 struct 字段引用的生命周期, 或者引用 是独立的也可以
+- 生命周期省略规则经常使得方法的生命周期标注不是必须的
+
+```rust
+struct ImportantExcerpt<'a> { // 在struct名之后
+    part: &'a str,
+}
+
+impl<'a> ImportantExcerpt<'a> { // impl 之后
+    fn level(&self) -> i32 {  // 应用规则3
+        3
+    }
+}
+```
+
+
+
+### 静态生命周期
+
+'static 是一个特殊的生命周期:  整个程序的持续时间.
+
+例如:  
+
+```rust
+let s: &'static str = "i have a static lifetime";
+```
+
+
+
+### 综合例子
+
+```rust
+use std::fmt::Display;
+
+fn longest_with_an_announcement<'a, T> 
+(x: &'a str, y: &'a str, ann: T) -> &'a str 
+where T: Display,
+{
+    println!("Announcement! {}", ann);
+    if x.len() > y.len(){
+    	x
+	} else {
+        y
+    }
+}
+
+fn main() {}
+```
+
+
+
+##  第十二章 测试
+
+测试函数 -------验证非测试代码的功能是否和预期一致.
+
+测试函数体 通常执行 3个操作:
+
+1. 准备数据/状态 
+2. 运行被测试的代码
+3. 断言 结果
+
+如果构建测试函数:
+
+使用test属性(attribute) 进行标注, Attribute 就是一段rust代码的元数据
+
+在函数上加 `#[test]`
+
+### 运行测试
+
+```shell
+cargo test
+```
+
+执行命令运行所有测试,,, 他会运行所有标注了test的函数.
+
+当使用cargo创建 library 项目时, 会生成一个test module, 里面有一个test函数. 当然也可以添加任意数量的test
+
+```rust
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        let result = 2 + 2;
+        assert_eq!(result, 4);
+    }
+}
+```
+
+
+
+### 测试失败
+
+测试函数panic 就表示失败.
+
+每个测试运行在一个新线程, 当主线程看见某个测试线程挂掉了, 那这个测试就被标记为失败.
+
+```rust
+    #[test]
+    fn another() {
+        panic!("make this test fail")
+    }
+```
+
+### 使用assert! 宏检查结果
+
+`assert!` 宏接收一个 bool值作为判断, True就是正确, False就是失败.
+
+`assert_eq!` 和 `assert_ne!`  接收两个参数, 一个时期望的结果,一个是计算得到的结果(无论顺序).  用以判断等于 或者不等于.  如果断言失败,就会自动打印出两个参数的值. 但必须实现PartialEq 和 Debug. 
+
+### 添加错误消息
+
+如上断言都可以加入自定义错误消息, 自定义消息和 失败消息都打印出来.
+
+`assert!` 第二个参数是 可以定义的信息,  `assert_eq! assert_ne!`第三个参数是 自定义消息. 自定义消息是传给 `format!`宏, 可以使用{} 占位符. 后面的参数用来填充占位符.
+
+### 验证错误处理
+
+验证是否如期待那样返回错误信息和错误类型.
+
+使用 should_panic 属性(attribute)
+
+```rust
+pub struct Guess {
+    value: u32,
+}
+
+impl Guess {
+    pub fn new(value: u32) -> Guess {
+        if value < 1 || value >100 {
+            panic!("Guess value must be between 1 and 100, got {}", value);
+        }
+        Guess { value }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[should_panic]  // 捕panic
+    fn greater_than_100() {
+        Guess::new(200);  // 应该panic
+    }
+}
+
+```
+
+#### 捕获特定的内容
+
+使用should_panic 属性添加一个可选的 expected参数:   expected 将检查失败消息中是否包含所指定的文字.
+
+```rust
+pub struct Guess {
+    value: u32,
+}
+
+impl Guess {
+    pub fn new(value: u32) -> Guess {
+        if value < 1 {
+            panic!("Guess value must be bigger than 1, got {}", value);
+        } else if value > 100 {
+            panic!("Guess value must be less than 100, got {}", value);
+        }
+        Guess { value }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    #[should_panic(expected = "Guess value must be less than or equal to 100")]
+    fn greater_than_100() {
+        Guess::new(200);
+    }
+}
+```
+
+
+
+###  在测试中使用Result<T, E>
+
+无需panic, 可使用Result<T, E>作为返回类型编写测试:
+
+ 返回 Ok: 测试通过,   返回 Err: 测试失败
+
+```rust
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() -> Result<(), String> {
+        if 2 + 2 == 4 {
+            Ok(())
+        } else {
+            Err(String::from("two plus two does not equal four"))
+        }
+    }
+}
+```
+
+
+
+ ### 控制测试的运行
+
+cargo test 的默认行为是 
+
+1. 并行运行
+2. 运行所有测试
+3. 捕获 所有输出, 使读取与测试结果相关的输出更容易
+
+命令行参数:
+
+- 针对cargo test 的参数: 紧跟cargo test 后
+- 针对 测试可执行程序: 放在 --  之后 (就是两个杠, cargo test --  --help)
+
+默认测试是 并行运行的,所以就得保证 测试之间没有相互依赖,
+
+串行运行测试
+
+cargo test -- --test-threads=1  一个线程运行. 使用此参数进行细粒度控制.
+
+
+
+函数中的打印 在通过测试的测试中是没有 打印的, 在没有通过测试的测试中是打印的.
+
+任何时候要进行打印 可以加参数 
+
+`cargo test -- --show-output`
+
+
+
+按测试的名称运行测试:
+
+可以将测试函数的名称传给cargo进行测试
+
+`cargo test one_hundred`
+
+
+
+### 忽略测试
+
+使用 ignore attribute
+
+```rust
+#[cfg(test)]
+mod tests {
+    #[test]
+    #[ignore]
+    fn it_works() -> Result<(), String> {
+        if 2 + 2 == 4 {
+            Ok(())
+        } else {
+            Err(String::from("two plus two does not equal four"))
+        }
+    }
+}
+```
+
+单独执行忽略的测试
+
+```rust
+cargo test -- --ignored
+```
+
+
+
+## 第十三章 闭包
 
