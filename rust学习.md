@@ -4139,3 +4139,45 @@ cargo test -- --ignored
 
 ## 第十三章 闭包
 
+什么是闭包?        可以捕获其所在环境的匿名函数.
+
+- 可以保存为变量 作为参数
+- 可以在一个地方创建闭包, 然后在另起一个上下文中调用闭包来完成运算.
+- 可以从其定义的作用域捕获值
+
+例子
+
+```rust
+use std::thread;
+use std::time::Duration;
+
+fn generate_workout(intensity: u32, random_number: u32) {
+  let expensive_closure = |num: u32| -> u32 {
+    println!("calculating slowly ...");
+    thread::sleep(Duration::from_secs(2));
+    num
+  }; // 定义一个匿名函数
+
+  if intensity < 25 {
+    println!("Today, do {} pushups!", expensive_closure(intensity));
+    println!("Next, do {} situps!", expensive_closure(intensity));
+  } else {
+    if random_number == 3 {
+      println!("Take a break today! Remember to stay hydrated!");
+    } else {
+      println!("Today, run for {} minutes!", expensive_closure(intensity));
+    }
+  }
+}
+```
+
+闭包不强制要求标注参数和返回值的类型. 因为闭包通常很短小, 只在狭小的上下文中工作, 编译器通常能够推断出类型.  但是但是, 闭包的定义最终只会为参数/返回值 推断出唯一具体的类型( 最终会确定一种具体的类型, 如果用其他类型调用就会出错)
+
+```rust
+let example_closure(){
+    let example_closure = |x| x;
+    let s = example_closure(String::from("hello"));  // 闭包的类型已经被指定为string
+    let n = example_closure(5);  // 此处不能再为 整型了
+}
+```
+

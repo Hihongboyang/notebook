@@ -1,5 +1,40 @@
 # Golang学习
 
+项目的构建主要是靠GOPATH来实现的。如果想要构建一个项目，就需要将这个项目的目录添加到 GOPATH 中，多个项目之间可以使用`;`分隔. 如果不配置 GOPATH，即使处于同一目录，代码之间也无法通过绝对路径相互调用.
+
+# 工作空间
+
+工作空间一般包含三个目录:
+
+src目录  包含Go的源文件, 他们被组织成包 每个目录都对应一个包
+
+pkg 目录 包含对象. 放置编译后生成的包/库的归档文件；
+
+bin 目录 包含可执行命令. 放置编译后生成的可执行文件。
+
+go工具用于构建源码包, 并将其生成的二进制文件安装到 pkg和bin目录中
+
+
+
+#### src目录
+
+用于以包 package 的形式组织并存放Go源文件, 这里的包与src下的每个子目录是一一对应的.  例如, 若一个源文件被声明属于log 包, 那么它就应当保存在 src/log 目录中.并不是说 src 目录下不能存放 Go 源文件，一般在测试或演示的时候也可以把 Go 源文件直接放在 src 目录下，但是这么做的话就只能声明该源文件属于 main 包了.
+
+包是Go语言管理代码的重要机制，其作用类似于[Java](http://c.biancheng.net/java/)中的 package 和 C/[C++](http://c.biancheng.net/cplus/) 的头文件。Go 源文件中第一段有效代码必须是`package <包名> `的形式，如 package hello。
+
+另外需要注意的是，Go语言会把通过`go get `命令获取到的库源文件下载到 src 目录下对应的文件夹当中。
+
+#### pkg 目录
+
+用于存放通过`go install `命令安装某个包后的归档文件。归档文件是指那些名称以“.a”结尾的文件。
+
+#### bin 目录
+
+与 pkg 目录类似，在通过`go install `命令完成安装后，保存由 Go 命令源文件生成的可执行文件
+
+- 命令源文件：如果一个 Go 源文件被声明属于 main 包，并且该文件中包含 main 函数，则它就是命令源码文件。命令源文件属于程序的入口，可以通过Go语言的`go run `命令运行或者通过`go build `命令生成可执行文件。
+- 库源文件：库源文件则是指存在于某个包中的普通源文件，并且库源文件中不包含 main 函数。
+
 ## 程序基本结构
 
 ````go
@@ -73,9 +108,13 @@ func main() {
 
 ## 常量和变量
 
-`const` 用来声明常量： 常量的值不可以改变
+`const` 用来声明常量： 常量的值不可以改变.. 
 
-`var` 用来声明变量： 想要使用变量首先需要进行声明。
+常量是在编译时被创建的，即使定义在函数内部也是如此，并且只能是布尔型、数字型（整数型、浮点型和复数）和字符串型。
+
+`var` 用来声明变量： 想要使用变量首先需要进行声明。 `var name type`
+
+当一个变量被声明之后，系统自动赋予它该类型的零值：int 为 0，float 为 0.0，bool 为 false，string 为空字符串，指针为 nil 等。所有的内存在 Go 中都是经过初始化的。
 
 ```go
 package main
@@ -84,7 +123,7 @@ import "fmt"
 
 func main() {
 	const lightSpeed = 100000
-	var distance = 19999999
+	var distance int32 = 19999999
 	fmt.Println(distance/lightSpeed, "seconds")
 
 	distance = 4010000
@@ -102,6 +141,50 @@ var (
 
 var distance, speed int = 1000000, 222222
 const houseprice, housenumber int = 10000, 678
+```
+
+简短格式
+
+`name := 表达式`
+
+简单格式的限制
+
+- 定义变量,同时显式初始化.
+- 不能提供数据类型
+- 只能在函数内部使用
+
+### 初始化
+
+的[Go语言在声明变量时，自动对变量对应的内存区域进行初始化操作。每个变量会初始化其类型的默认值，例如：
+
+- 整型和浮点型变量的默认值为 0 和 0.0。
+- 字符串变量的默认值为空字符串。
+- 布尔型变量默认为 bool。
+- 切片、函数、指针变量的默认为 nil。
+
+初始化的标准格式
+
+```go
+var 变量名  类型 = 表达式
+var hp int = 100
+```
+
+go的编译器也支持 类型推导.
+
+### 匿名变量
+
+匿名变量的特点是一个下画线“_”，“_”本身就是一个特殊的标识符，被称为空白标识符。它可以像其他标识符那样用于变量的声明或赋值（任何类型都可以赋值给它），但任何赋给这个标识符的值都将被抛弃，因此这些值不能在后续的代码中使用，也不可以使用这个标识符作为变量对其它变量进行赋值或运算。
+
+```go
+func GetData() (int, int) {
+    return 100, 200
+}
+
+func main() {
+    a, _ = GetData()
+    _, b = GetData()
+    fmt.Println(a, b)
+}
 ```
 
 ### 赋值运算符
@@ -177,13 +260,55 @@ func main() {
 }
 ```
 
+### iota 常量生成器
+
+常量声明可以使用 iota 常量生成器初始化，它用于生成一组以相似规则初始化的常量，但是不用每行都写一遍初始化表达式。在一个 const 声明语句中，在第一个声明的常量所在的行，iota 将会被置为 0，然后在每一个有常量声明的行加一。
+
+```go
+type Weekday int
+
+const (
+	Sunday Weekday = iota
+    Monday
+    Tuesday
+    Wednesday
+    Thursday
+    Friday
+    Saturday
+)
+```
+
+iota 会依次给 他们赋值 0 - 6
 
 
-## Boolean 类型
+
+## 数据类型
+
+### 整数类型
+
+`int8` `int16` `int32` `int64`
+
+`uint8`、`uint16`、`uint32` 和 `uint64`
+
+`int` 和 `uint`，它们分别对应特定 CPU 平台的字长（机器字大小）
+
+### 浮点类型
+
+`float32`  `float64`
+
+浮点数取值范围的极限值可以在 math 包中找到：
+
+- 常量 `math.MaxFloat32` 表示 `float32` 能取到的最大数值，大约是 `3.4e38`；
+- 常量 math.MaxFloat64 表示 `float64` 能取到的最大数值，大约是 `1.8e308`；
+- `float32` 和 `float64` 能表示的最小值分别为 `1.4e-45` 和 `4.9e-324`。
+
+
+
+### Boolean 类型
 
 其他语言会将，非空值定义为True，空值定义为False。**但是golang不行，只有True为真，False为假。相当于只有True和False才能进行布尔值判断**
 
-### strings.Contains
+#### strings.Contains
 
 sting包的Contains函数可以判断某个字符串是否包含另外要给的字符串。
 
@@ -203,11 +328,221 @@ func main() {
 }
 ```
 
-### 比较
+#### 比较
 
 ````
 == != <= >= > <
 ````
+
+### 字符串
+
+UTF-8 是一种被广泛使用的编码格式，是文本文件的标准编码，其中包括 XML 和 JSON 在内也都使用该编码。由于该编码对占用字节长度的不定性，在Go语言中字符串也可能根据需要占用 1 至 4 个字节，这与其它编程语言不同. Go语言这样做不仅减少了内存和硬盘空间占用，同时也不用像其它语言那样需要对使用 UTF-8 字符集的文本进行编码和解码。
+
+字符串是一种值类型，且值不可变，即创建某个文本后将无法再次修改这个文本的内容，更深入地讲，字符串是字节的定长数组。
+
+可以使用双引号`""`来定义字符串，字符串中可以使用转义字符来实现换行、缩进等效果.
+
+一般的比较运算符（==、!=、<、<=、>=、>）是通过在内存中按字节比较来实现字符串比较的，因此比较的结果是字符串自然编码的顺序。字符串所占的字节长度可以通过函数 len() 来获取，例如` len(str)`。字符串的内容（纯字节）可以通过标准索引法来获取，在方括号`[ ]`内写入索引，索引从 0 开始计数：
+
+- 字符串 str 的第 1 个字节：str[0]
+- 第 i 个字节：str[i - 1]
+- 最后 1 个字节：str[len(str)-1]
+
+需要注意的是，这种转换方案只对纯 ASCII 码的字符串有效。
+
+### 字符串拼接  " + "
+
+两个字符串 s1 和 s2 可以通过 s := s1 + s2 拼接在一起。将 s2 追加到 s1 尾部并生成一个新的字符串 s。
+
+可以通过下面的方式来对代码中多行的字符串进行拼接：
+
+```go
+str := "Beginning of the string" +
+"second part of the string"
+```
+
+> 提示：因为编译器会在行尾自动补全分号，所以拼接字符串用的加号“+”必须放在第一行末尾。
+
+### 定义多行字符串
+
+在Go语言中，使用双引号书写字符串的方式是字符串常见表达方式之一，被称为字符串字面量（string literal），这种双引号字面量不能跨行，如果想要在源码中嵌入一个多行字符串时，就必须使用```反引号，代码如下：
+
+```go
+const str = `第一行
+第二行
+第三行
+`
+```
+
+转义符会按照原样输出
+
+### Go语言字符类型
+
+Go语言的字符有以下两种：
+
+- 一种是 uint8 类型，或者叫 byte 型，代表了 ASCII 码的一个字符。
+- 另一种是 rune 类型，代表一个 UTF-8 字符，当需要处理中文、日文或者其他复合字符时，则需要用到 rune 类型。rune 类型等价于 int32 类型。
+
+
+byte 类型是 uint8 的别名，对于只占用 1 个字节的传统 ASCII 编码的字符来说，完全没有问题，例如 var ch byte = 'A'，字符使用单引号括起来。
+
+Go语言同样支持 Unicode（UTF-8），因此字符同样称为 Unicode 代码点或者 runes，并在内存中使用 int 来表示。在文档中，一般使用格式 U+hhhh 来表示，其中 h 表示一个 16 进制数。
+
+在书写 Unicode 字符时，需要在 16 进制数之前加上前缀`\u`或者`\U`。因为 Unicode 至少占用 2 个字节，所以我们使用 int16 或者 int 类型来表示。如果需要使用到 4 字节，则使用`\u`前缀，如果需要使用到 8 个字节，则使用`\U`前缀。
+
+```go
+var ch int = '\u0041'
+var ch2 int = '\u03B2'
+var ch3 int = '\U00101234'
+fmt.Printf("%d - %d - %d\n", ch, ch2, ch3) // integer
+fmt.Printf("%c - %c - %c\n", ch, ch2, ch3) // character
+fmt.Printf("%X - %X - %X\n", ch, ch2, ch3) // UTF-8 bytes
+fmt.Printf("%U - %U - %U", ch, ch2, ch3)   // UTF-8 code point
+```
+
+### 指针
+
+指针（pointer）在Go语言中可以被拆分为两个核心概念：
+
+- 类型指针，允许对这个指针类型的数据进行修改，传递数据可以直接使用指针，而无须拷贝数据，类型指针不能进行偏移和运算。
+- 切片，由指向起始元素的原始指针、元素数量和容量组成。
+
+受益于这样的约束和拆分，Go语言的指针类型变量即拥有指针高效访问的特点，又不会发生指针偏移，从而避免了非法修改关键性数据的问题。同时，垃圾回收也比较容易对不会发生偏移的指针进行检索和回收。
+
+切片比原始指针具备更强大的特性，而且更为安全。切片在发生越界时，运行时会报出宕机，并打出堆栈，而原始指针只会崩溃。
+
+每个变量在运行时都拥有一个地址，这个地址代表变量在内存中的位置。Go语言中使用在变量名前面添加`&`操作符（前缀）来获取变量的内存地址（取地址操作），格式如下：
+
+```go
+ptr := &v // V的类型为T
+```
+
+其中 v 代表被取地址的变量，变量 v 的地址使用变量 ptr 进行接收，ptr 的类型为`*T`，称做 T 的指针类型，`*`代表指针。
+
+```go
+package main
+
+import (
+	"fmt"
+)
+func main() {
+    var cat int = 1
+    var str string = "banana"
+    fmt.Printf("%p %p", &cat, &str)
+}
+```
+
+当使用`&`操作符对普通变量进行**取地址操作**并得到**变量的指针**后，可以对指针使用`*`操作符，也就是指针取值，
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+    // 准备一个字符串类型
+	var house = "Malibu Point 10880, 90265"
+
+    // 对字符串取地址, ptr类型为*string
+	ptr := &house
+    // 打印ptr的类型
+	fmt.Printf("ptr type: %T\n", ptr)
+    // 打印ptr的指针地址
+	fmt.Printf("address: %p\n", ptr)
+    // 对指针进行取值操作
+	value := *ptr
+    // 取值后的类型
+	fmt.Printf("value type: %T\n", value)
+    // 指针取值后就是指向变量的值
+	fmt.Printf("value: %s\n", value)
+}
+```
+
+变量、指针地址、指针变量、取地址、取值的相互关系和特性如下：
+
+- 对变量进行取地址操作使用`&`操作符，可以获得这个变量的指针变量。
+- 指针变量的值是指针地址。
+- 对指针变量进行取值操作使用`*`操作符，可以获得指针变量指向的原变量的值。
+
+#### 例子
+
+获取命令行参数
+
+```go
+package main
+
+import (
+	"flag"
+	"fmt"
+)
+
+// 定义命令行参数
+// 返回一个字符串指针, 第一个参数: 参数名称：在命令行输入参数时，使用这个名称。 第二个参数: 默认值. 第三个参数: 使用help的提示
+var mode = flag.String("mode", "", "process mode")
+
+func main() {
+	flag.Parse()
+	fmt.Println(*mode)
+}
+```
+
+执行命令 `go run main.go --mode=fase`
+
+#### 使用new()创建指针
+
+```go
+new(类型)
+```
+
+```go
+str := new(string)
+*str = "Go语言"
+
+fmt.Println(*str)
+```
+
+### 类型别名
+
+类型别名的写法,
+
+```go
+type TypeAlias = Type
+```
+
+类型别名规定：TypeAlias 只是 Type 的别名，本质上 TypeAlias 与 Type 是同一个类型，
+
+类型别名与类型定义表面上看只有一个等号的差异，那么它们之间实际的区别有哪些呢？下面通过一段代码来理解。
+
+```go
+package main
+
+import (
+	"fmt"
+)
+// 将NewInt 定义为int类型,  是一个新类型
+type NewInt int
+// 将int取一个别名叫 IntAlias
+type IntAlias = int
+
+func main() {
+    // 将a声明为NewInt类型
+	var a NewInt
+    // 查看a的类型名
+	fmt.Printf("a type:%T\n", a)
+    // 将a2 声明为IntAlias 类型
+	var a2 IntAlias
+    // 查看a2的类型名
+	fmt.Printf("a2 type: %T\n", a2)
+}
+```
+
+
+
+
+
+
 
 ## 判断结构if
 
@@ -1251,8 +1586,13 @@ func main() {
 数组是一种**固定长度**的有序的元素集合
 
 ```go
+var 数组变量名 [元素数量] Type
 var planets [8]string // 声明了一个长度为8的字符串数组
 ```
+
+- 数组变量名：数组声明及使用时的变量名。
+- 元素数量：数组的元素数量，可以是一个表达式，但最终通过编译期计算的结果必须是整型数值，元素数量不能含有到运行时才能确认大小的数值。
+- Type：可以是任意基本类型，包括数组本身，类型为数组本身时，可以实现多维数组。
 
 ### 数组的初始化
 
@@ -1390,7 +1730,7 @@ func main() {
 
 
 
-多维数组
+### 多维数组
 
 ```go
 func main() {
@@ -1410,7 +1750,7 @@ func main() {
 
 ### slice切片
 
-假设planets是一个数组，那么planets[0:4]就是一个切片，它切分出了数组里前4个元素
+假设planets是一个数组，那么planets[0:4]就是一个切片，它切分出了数组里前4个元素, 所以切片是一个引用类型
 
 切分数组不会导致数组被修改，它只是创建了指向数组的一个窗口或视图，这种视图就是`slice`类型
 
@@ -1446,7 +1786,7 @@ go里面很多函数都倾向于使用slice而不是数组作为参数。想要�
 直接创建数组切片
 
 ```go
-[]string // 括号里没有长度
+var name []Type // 括号里没有长度
 ```
 
 ```go
@@ -1604,6 +1944,23 @@ func main() {
 
 什么时候使用三切片的操作？ 在只需要切片范围内的数据时，并且在后续添加数据时，会重新创建数组。
 
+在切片开头添加元素
+
+```go
+var a = []int{1,2,3}
+a = append([]int{0}, a...)
+a = append([]int{-3, -2, -1}, a...)
+```
+
+在位置i 添加元素
+
+```go
+a = append(a[:i], append([]int{x}, a[i:]...)...)
+a = append(a[:i], append([]int{1,2,3}, a[i:]...)...)
+```
+
+
+
 ### 使用make函数对 slice进行预分配
 
 ```go
@@ -1626,6 +1983,46 @@ func main() {
 	dump("dwarfs", dwarfs)
 }
 ```
+
+### 从切片中删除元素
+
+Go语言并没有对删除切片元素提供专用的语法或者接口，需要使用切片本身的特性来删除元素，根据要删除元素的位置有三种情况，分别是从开头位置删除、从中间位置删除和从尾部删除，其中删除切片尾部的元素速度最快。
+
+从开头删除
+
+```go
+a = []int{1,2,3}
+a = a[1:] // 删除开头1个元素
+a = a[N:]
+
+a = append(a[:0], a[1:]...)
+a = append(a[:0], a[N:]...)
+
+a = a[:copy(a, a[1:])]
+a = a[:copy(a, a[N:])]
+```
+
+从中间位置删除
+
+```go
+a = []int{1,2,3}
+
+a = append(a[:i], a[i+1:]...)
+a = append(a[:i], a[i+N:]...)
+
+a = a[:i+copy(a[i:], a[i+1:])]
+a = a[:i+copy(a[i:], a[i+N:])]
+```
+
+从尾部删除
+
+```go
+a = []int{1,2,3}
+a = a[:len(a)-1]
+a = a[:len(a)-N]
+```
+
+
 
 ### 创建接受可变数量参数的函数
 
@@ -1663,9 +2060,11 @@ map是一种哈希类型。类似于python中的字典
 ### 声明map
 
 ```
-map   [string]     int 
-关键字  键的类型   值的类型
+var mapname map   [string]     int 
+           关键字  键的类型   值的类型
 ```
+
+在声明的时候不需要知道 map 的长度，因为 map 是可以动态增长的，未初始化的 map 的值是 nil，使用函数 len() 可以获取 map 中 pair 的数目。
 
 ```go
 func main() {
@@ -1725,7 +2124,7 @@ func main() {
 
 ```go
 func main() {
-	temperature := make(map[float64]int, 8)
+    temperature := make(map[float64]int, 8)  // map[float]int{}
 
 	fmt.Println(temperature)
     fmt.Println(len(temperature))
@@ -1771,6 +2170,101 @@ func main() {
 		fmt.Printf("%v: %v\n", t, num)
 	}
 }
+```
+
+### 使用delete() 函数从map中删除键值对
+
+格式如下
+
+```go
+delete(map, 键)
+```
+
+其中 map 为要删除的 map 实例，键为要删除的 map 中键值对的键。
+
+```go
+scene := make(map[string]int)
+// 准备map数据
+scene["route"] = 66
+scene["brazil"] = 4
+scene["china"] = 960
+delete(scene, "brazil")
+for k, v := range scene {
+    fmt.Println(k, v)
+}
+```
+
+清空map中的所有元素
+
+Go语言中并没有为 map 提供任何清空所有元素的函数、方法，清空 map 的唯一办法就是重新 make 一个新的 map，不用担心垃圾回收的效率，Go语言中的并行垃圾回收效率比写一个清空函数要高效的多。
+
+
+
+### 线程安全的map
+
+Go语言中的 map 在并发情况下，只读是线程安全的，同时读写是线程不安全的。
+
+```go
+m := make(map[int]int)  // 创建一个int到int的映射
+
+// 开启一段并发代码
+go func() {
+    for {
+        m[1] = 1 // 不停写入
+    }
+}()
+
+go func() {
+    for {
+        _ = m[1]  // 不停读取
+    }
+}()
+
+// 无线循环
+for {
+}
+```
+
+这里会发生错误, 并发的对map进行读写, 这在编译阶段就会报错.
+
+go提供了一个并发安全的map对象 ` sync.Map `, 他存在与sync 包下
+
+sync.Map 有以下特性：
+
+- 无须初始化，直接声明即可。
+- sync.Map 不能使用 map 的方式进行取值和设置等操作，而是使用 sync.Map 的方法进行调用，Store 表示存储，Load 表示获取，Delete 表示删除。
+- 使用 Range 配合一个**回调函数**进行遍历操作，通过回调函数返回内部遍历出来的值，Range 参数中回调函数的返回值在需要继续迭代遍历时，返回 true，终止迭代遍历时，返回 false。
+
+```go
+package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func main() {
+    var scene sync.Map
+    
+    // 将键值对保存到 sync.Map
+    scene.Store("greece", 97)
+    scene.Store("london", 100)
+    scene.Store("egypt", 200)
+    
+    // 从sync.Map 中根据键取值
+    fmt.Println(scene.Load("london"))
+    
+    //  根据键删除对应的键值对
+    scene.Delete("london")
+    
+    // 遍历所有sync.Map中的键值对 
+    scene.Range(func(k, v interface{}) bool {
+        fmt.Println("iterate:",k,v)
+        return true
+    })
+    
+}
+
 ```
 
 
