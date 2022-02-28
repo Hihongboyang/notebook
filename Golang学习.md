@@ -540,229 +540,6 @@ func main() {
 
 
 
-
-
-
-
-## 判断结构if
-
-这与C语言的判断结构比较像
-
-```go
-if 布尔表达式 {
-    /* 在布尔表达式为 true 时执行*/
-}
-
-if 布尔表达式 {
-    /* 在布尔表达式为 true 时执行*/
-} else {
-    /* 在布尔表达式为 false 时执行*/
-}
-```
-
-
-
-````go
-package main
-
-import (
-	"fmt"
-)
-
-func main() {
-	var command = "go east"
-	if command == "go east" {
-		fmt.Println("you head future up the mountain.")
-	} else if command == "go inside" {
-		fmt.Println("you enter the cave where you live out the rest of your life.")
-	} else {
-		fmt.Println("Didn't quite get that.")
-	}
-}
-
-````
-
-
-
-### 逻辑运算符
-
-`||` `&&` 与C语言中的用法类似，也具有短路特性，当第一条件判断成功时，就不判断后面的条件了
-
-```go
-package main
-
-import (
-	"fmt"
-)
-
-func main() {
-
-	fmt.Println("the year is 2100, should you leap?")
-	var year = 2100
-	var leap = year%400 == 0 || (year%4 == 0 && year%100 != 0)
-
-	if leap {
-		fmt.Println("Look before you leap")
-	} else {
-		fmt.Println("keep your feet on the ground.")
-	}
-}
-```
-
-### switch
-
-分支结构
-
-switch 语句执行的过程从上至下，直到找到匹配项，匹配项后面也不需要再加 break。
-
-switch 默认情况下 case 最后自带 break 语句，匹配成功后就不会执行其他 case，如果我们需要执行后面的 case，可以使用 `fallthrough`。
-
-```go
-switch var1 {
-    case val1:
-    	...
-    case val2:
-    	...
-    case val3:
-    	...
-    default:
-    	...
-}
-```
-
-
-
-```go
-package main
-
-import (
-	"fmt"
-)
-
-func main() {
-	fmt.Println("there is a cavern entrance here and a path to the east")
-	var command = "go inside"
-	switch command {
-	case "go east":
-		fmt.Println("you head further up the mountain")
-	case "enter cave", "go inside": // 这里有两个条件可以匹配
-		fmt.Println("you find yourself in a dimly lit cavern.")
-        fallthrough
-	case "read sign":
-		fmt.Println("the sign reads 'No minors") // fallthrough会执行这里
-	default:
-		fmt.Println("didn't quites get that")
-	}
-
-}
-
-```
-
-`fallthrough` 关键字，用来执行下一个和case的body部分。当使用了这个关键字后，会执行剩下所有的case的body。**go没有break关键字跳出switch**
-
-## 循环结构
-
-**for循环**可以有循环条件，也可以没有循环条件
-
-for 有3种形式
-
-1. 和C的for一样
-
-```go
-for init; condition; post {
-    pass
-}
-```
-
-2. 和C的while一样
-
-```go
-for condition {}
-```
-
-3. 和C的for(;;)一样，无限循环
-
-```go
-for {}
-```
-
-例子
-
-```go
-package main
-
-import (
-	"fmt"
-	"time"
-)
-
-func main() {
-	var count = 10
-	for count > 0 {
-		fmt.Println(count)
-		time.Sleep(time.Second)
-		count--
-	}
-	fmt.Println("Liftoff!")
-}
-
-```
-
-或者没有循环条件，使用break来结束循环
-
-````go
-package main
-
-import (
-	"fmt"
-	"time"
-)
-
-func main() {
-	var count = 10
-	for {
-        if count <0 {
-            break
-        }
-		fmt.Println(count)
-		time.Sleep(time.Second)
-		count--
-	}
-	fmt.Println("Liftoff!")
-}
-
-````
-
-#### 作业题
-
-````go
-package main
-
-import (
-	"fmt"
-	"math/rand"
-)
-
-func main() {
-	const rand_val = 31
-	var some_val = rand.Intn(100)
-
-	for {
-		if some_val == rand_val {
-			break
-		} else if some_val > rand_val {
-			fmt.Println("your number is bigger than my point")
-		} else {
-			fmt.Println("your number is smaller than my point")
-		}
-
-		some_val = rand.Intn(100)
-
-	}
-	fmt.Println("congratulation!!! your right!")
-}
-````
-
 ## 变量的作用域
 
 变量的作用域和python的作用域区别不大。但是需要的注意的是，在{}之间的作用域，在{}之间声明的变量，作用域就在{}之间。
@@ -1213,373 +990,6 @@ string(false)
 bool(1)
 bool("yes")   这些都是不对的
 ```
-
-
-
-## 函数
-
-### 函数声明
-
-Go在标准库文档中列出了标准库每个包中声明的函数。
-
-使用`func`关键字声明函数
-
-````
-func     Intn      (n int)          int
-关键字    函数名   形参（名称 类型） 返回值和类型
-````
-
-**在Go里，大写字母开头的函数、变量或其他标识符都可以被导出，被其他包引用。**
-
-**而小写字母开头的则不能被其他包引用**
-
-
-
-### 多个参数
-
-```go
-func Unix(sec int64, nsec int64) Time
-```
-
-如果多个参数类型相同，那么该类型只写一次即可
-
-```go
-func Unix(sec, nesci int64) Time
-```
-
-### 多个返回值
-
-多个返回值要用括号括起来。
-
-```go
-func Atoi(s string) (i int, err error)
-```
-
-这里可以将返回值的名称去掉，只保留类型。返回值本身的名称并不重要
-
-```go
-func Atoi(s string) (int,error)
-```
-
-
-
-### 可变参数
-
-类似`Println`可以接收任意数量的参数
-
-```go
-func Println(a...interface{}) (int, error)
-```
-
-`...`表示函数的参数的数量是可变的
-
-参数a的类型为`interface{}`,是一个空接口，意思是所有类型都实现了这个接口。
-
-`...`和`interface{}`一起使用就表示接收任意数量，类型的参数。
-
-练习题
-
-````go
-package main
-
-import (
-	"fmt"
-)
-
-func kelvinToCelsius(k float64) float64 {
-	k -= 273.15
-	return k
-}
-
-func celsiusToFahrenheit(v float64) float64 {
-	return (v * 9.0 / 5.0) + 32.0
-}
-
-func kelvinToFahrenheit(k float64) float64 {
-	return -459.67 + k
-}
-func main() {
-	kelvin := 294.0
-	celsius := kelvinToCelsius(kelvin)
-	fmt.Print(kelvin, "k is ", celsius, "C\n")
-	fmt.Print(kelvinToCelsius(kelvin), "C is ", celsiusToFahrenheit(kelvinToCelsius(kelvin)), "F \n")
-	fmt.Print(kelvin, "k is ", kelvinToFahrenheit(0), "F\n")
-}
-````
-
-
-
-## 方法
-
-与某个类型关联的函数，go中没有类和对象？
-
-### 声明新类型
-
-使用type关键字 声明新类型：
-
-```go
-type celsius float64
-var temperature celsius = 20
-```
-
-celsius 和float64虽然地层是相同的，但是，已经变成两个类型了。所以 也不能同时进行运算。 
-
-### 通过方法为类型添加行为
-
-可以将方法与包中声明的任何类型相关联，但不可以是int、float64等预声明的类型进行关联。
-
-```go
-type celsius float64
-type kelvin float64
-
-func kelvinToCelsius(k kelvin) celsius {
-    return celsius(k - 273.15)
-}
-
-func (k kelvin) celsius() celsius {  // (k kelvin) 就表示celsius这个方法和kelvin这个类型关联， k是类型参数的接收者
-    return celsius(k - 273.15)
-}
-
-```
-
-在方法体中，接受者的行为和其他函数一样
-
-```
-func    (k  kelvin)    celsius()   celsius
-关键字  接收者参数 类型      方法名    返回值和类型
-```
-
-调用方式
-
-`变量.方法`
-
-```go
-type kelvin float64
-var k kelvin = 234.0
-
-c = k.celsius()
-```
-
-
-
-练习题
-
-```go
-package main
-
-import (
-	"fmt"
-)
-
-type celsius float64
-type fahrenheit float64
-type kelvin float64
-
-func (k kelvin) kelvinToCelsius() celsius {
-	k -= 273.15
-	return celsius(k)
-}
-
-func (c celsius) celsiusToFahrenheit() fahrenheit {
-	return fahrenheit((c * 9.0 / 5.0) + 32.0)
-}
-
-func (k kelvin) kelvinToFahrenheit() fahrenheit {
-	return fahrenheit(-459.67 + k)
-}
-
-func main() {
-	var k kelvin = 294.0
-	var c celsius = k.kelvinToCelsius()
-	fmt.Print(k, "k is ", c, "C\n")
-	fmt.Print(k.kelvinToCelsius(), "C is ", c.celsiusToFahrenheit(), "F \n")
-	fmt.Print(0, "k is ", kelvin(0).kelvinToFahrenheit(), "F\n")
-}
-```
-
-## 一等函数
-
-在Go里，函数的是头等的，它可以用在整数、字符串或其他类型能用的地方。
-
-- 将函数赋值给变量。
-- 将函数作为参数传递
-- 将函数作为函数的返回值
-
-```go
-package main
-
-import (
-	"math/rand"
-	"fmt"
-)
-
-type kelvin float64
-
-func fakeSensor() kelvin {
-	return kelvin(rand.Intn(151) + 150)
-}
-
-func realSensor() kelvin {
-	return 0
-}
-
-func main() {
-	sensor := fakeSensor // 将函数传给变量
-	fmt.Println(sensor())
-
-	sensor = realSensor
-	fmt.Println(sensor())
-}
-```
-
-
-
-将函数传递 给其他函数
-
-```go
-package main
-
-import (
-	"fmt"
-	"math/rand"
-	"time"
-)
-
-type kelvin float64
-
-func measureTemperature(samples int, sensor func() kelvin) { // 注意这里，sensor是变量 kelvin是返回值类型
-	for i := 0; i < samples; i++ {
-		k := sensor()
-		fmt.Printf("%v k\n", k)
-		time.Sleep(time.Second)
-	}
-}
-
-func fakeSensor() kelvin {
-	return kelvin(rand.Intn(151) + 150)
-}
-
-func main() {
-	measureTemperature(3, fakeSensor)
-}
-```
-
-### 声明函数类型
-
-为声明函数类型有助于精简和明确调用者的代码
-
-```go
-type sensor func() kelvin
-/*可以将函数中的参数替换*/
-func measureTemperature(sample int, s func() kelvin)
-
-func measureTemperature(samples int, s sensor)
-```
-
-
-
-### 闭包和匿名函数
-
-匿名函数
-
-```go
-var f = func() {
-	fmt.Println("Dress up for the masquerade")
-}
-
-func main() {
-	f()
-    
-    var f2 = func(message string) {
-		fmt.Println(message)
-	}
-
-	f2("something happened")
-}
-```
-
-因为函数数字字面值需要保留外部作用域的变量引用，所以函数字面值都是闭包的。
-
-闭包就是由于匿名函数封闭并包围作用域中的变量而得名的。
-
-```go
-package main
-
-import (
-	"fmt"
-)
-
-type kelvin float64
-type sensor func() kelvin
-
-func realSensor() kelvin {
-	return 0
-}
-
-func calibrate(s sensor, offset kelvin) sensor {
-	return func() kelvin {  // 闭包
-		return s() + offset
-	}
-}
-
-func main() {
-	sensor := calibrate(realSensor, 5)
-	fmt.Println(sensor())
-}
-```
-
-
-
-### 作业题
-
-````go
-package main
-
-import (
-	"fmt"
-	"strings"
-)
-
-const format = "|%-10.1f|%-10.1f|\n"
-const equal_num = 23
-
-func print_equal(num int) {
-	fmt.Println(strings.Repeat("=", num))
-}
-
-func print_title(val1 string, val2 string) {
-	fmt.Printf("|%-10v|%-10v|\n", val1, val2)
-}
-func print_val(val1 float64, val2 float64) {
-	fmt.Printf(format, val1, val2)
-}
-
-func celsiusToFahrenheit(c float64) float64 {
-	return (c * 9.0 / 5.0) + 32.0
-}
-
-func main() {
-
-	print_equal(equal_num)
-	print_title("C", "F")
-	print_equal(equal_num)
-	for count := -40.0; count < 101.0; count += 5.0 {
-		print_val(float64(count), celsiusToFahrenheit(float64(count)))
-	}
-	print_equal(equal_num)
-
-	print_equal(equal_num)
-	print_title("F", "C")
-	print_equal(equal_num)
-	for count := -40.0; count < 101.0; count += 5.0 {
-		print_val(celsiusToFahrenheit(float64(count)), float64(count))
-	}
-	print_equal(equal_num)
-
-}
-````
-
-
 
 ## 数组
 
@@ -2323,6 +1733,50 @@ func main() {
 
 
 
+### make和new的区别
+
+make和new是两个内置函数, 主要用来创建并分配内存. 两者的区别是: new 只分配内存, 而make只能用于slice  map  channel的初始化.
+
+new的函数描述如下
+
+```go
+// The new built-in function allocates memory. The first argument is a type,
+// not a value, and the value returned is a pointer to a newly
+// allocated zero value of that type.
+func new(Type) *Type
+```
+
+从上面的代码可以看出，new 函数只接受一个参数，这个参数是一个类型，并且返回一个指向该类型内存地址的指针。同时 new 函数会把分配的内存置为零，也就是类型的零值。
+
+new不仅可以为默认数据类型分配空间,  还可以为自定义类型分配空间
+
+```go
+type Student struct {
+    name string
+    age int
+}
+
+var s *Student
+s = new(Student)
+s.name = "dede"
+
+fmt.Println(s)
+```
+
+这里如果我们不使用 new 函数为自定义类型分配空间（将第 7 行注释），就会报错
+
+make
+
+make 也是用于内存分配的，但是和 new 不同，它只用于 chan、map 以及 slice 的内存创建，而且它返回的类型就是这三个类型本身，而不是他们的指针类型，因为这三种类型就是引用类型，所以就没有必要返回他们的指针了。
+
+Go语言中的 new 和 make 主要区别如下：
+
+- make 只能用来分配及初始化类型为 slice、map、chan 的数据。new 可以分配任意类型的数据；
+- new 分配返回的是指针，即类型 *Type。make 返回引用，即 Type；
+- new 分配的空间被清零。make 分配空间后，会进行初始化；
+
+
+
 作业题
 
 统计一段话中的单词的频率，然后输出频率大于1的单词
@@ -2351,8 +1805,689 @@ func main() {
 	fmt.Println()
 
 }
+```
+
+
+
+## 判断结构if
+
+这与C语言的判断结构比较像
+
+```go
+if 布尔表达式 {
+    /* 在布尔表达式为 true 时执行*/
+}
+
+if 布尔表达式 {
+    /* 在布尔表达式为 true 时执行*/
+} else {
+    /* 在布尔表达式为 false 时执行*/
+}
+```
+
+关键字 if 和 else 之后的左大括号`{`必须和关键字在同一行，如果你使用了 else if 结构，则前段代码块的右大括号`}`必须和 else if 关键字在同一行，这两条规则都是被编译器强制规定的。
+
+````go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	var command = "go east"
+	if command == "go east" {
+		fmt.Println("you head future up the mountain.")
+	} else if command == "go inside" {
+		fmt.Println("you enter the cave where you live out the rest of your life.")
+	} else {
+		fmt.Println("Didn't quite get that.")
+	}
+}
+
+````
+
+### 特殊写法
+
+if 还有一种特殊的写法，可以在 if 表达式之前添加一个执行语句，再根据变量值进行判断，代码如下：
+
+```go
+if err := Connect(); err != nil {
+    fmt.Println(err)
+    return
+}
+```
+
+Connect 是一个带有返回值的函数，err:=Connect() 是一个语句，执行 Connect 后，将错误保存到 err 变量中。
+
+err != nil 才是 if 的判断表达式，当 err 不为空时，打印错误并返回。
+
+
+
+### 逻辑运算符
+
+`||` `&&` 与C语言中的用法类似，也具有短路特性，当第一条件判断成功时，就不判断后面的条件了
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+
+	fmt.Println("the year is 2100, should you leap?")
+	var year = 2100
+	var leap = year%400 == 0 || (year%4 == 0 && year%100 != 0)
+
+	if leap {
+		fmt.Println("Look before you leap")
+	} else {
+		fmt.Println("keep your feet on the ground.")
+	}
+}
+```
+
+## switch
+
+分支结构
+
+switch 语句执行的过程从上至下，直到找到匹配项，匹配项后面也不需要再加 break。
+
+switch 默认情况下 case 最后自带 break 语句，匹配成功后就不会执行其他 case，如果我们需要执行后面的 case，可以使用 `fallthrough`。
+
+```go
+switch var1 {
+    case val1:
+    	...
+    case val2:
+    	...
+    case val3:
+    	...
+    default:
+    	...
+}
+```
+
+
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+func main() {
+	fmt.Println("there is a cavern entrance here and a path to the east")
+	var command = "go inside"
+	switch command {
+	case "go east":
+		fmt.Println("you head further up the mountain")
+	case "enter cave", "go inside": // 这里有两个条件可以匹配
+		fmt.Println("you find yourself in a dimly lit cavern.")
+        fallthrough
+	case "read sign":
+		fmt.Println("the sign reads 'No minors") // fallthrough会执行这里
+	default:
+		fmt.Println("didn't quites get that")
+	}
+
+}
 
 ```
+
+`fallthrough` 关键字，用来执行下一个和case的body部分。当使用了这个关键字后，会执行剩下所有的case的body。**go没有break关键字跳出switch**
+
+
+
+
+
+## 循环结构
+
+与多数语言不同的是，Go语言中的循环语句只支持 for 关键字，而不支持 while 和 do-while 结构，关键字 for 的基本使用方法与C语言和 [C++](http://c.biancheng.net/cplus/) 中非常接近：
+
+**for循环**可以有循环条件，也可以没有循环条件
+
+for 有3种形式
+
+1. 和C的for一样
+
+```go
+for init; condition; post {
+    pass
+}
+```
+
+2. 和C的while一样
+
+```go
+for condition {}
+```
+
+3. 和C的for(;;)一样，无限循环
+
+```go
+for {}
+```
+
+例子
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	var count = 10
+	for count > 0 {
+		fmt.Println(count)
+		time.Sleep(time.Second)
+		count--
+	}
+	fmt.Println("Liftoff!")
+}
+
+```
+
+或者没有循环条件，使用break来结束循环
+
+````go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	var count = 10
+	for {
+        if count <0 {
+            break
+        }
+		fmt.Println(count)
+		time.Sleep(time.Second)
+		count--
+	}
+	fmt.Println("Liftoff!")
+}
+
+````
+
+使用循环语句时，需要注意的有以下几点：
+
+- 左花括号`{`必须与 for 处于同一行。
+- Go语言中的 for 循环与C语言一样，都允许在循环条件中定义和初始化变量，唯一的区别是，Go语言不支持以逗号为间隔的多个赋值语句，必须使用平行赋值的方式来初始化多个变量。
+- Go语言的 for 循环同样支持 continue 和 break 来控制循环，但是它提供了一个更高级的 break，可以选择中断哪一个循环，如下例：
+
+```go
+for j := 0; j < 5; j++ {
+    for i := 0; i < 10; i++ {
+        if i > 5 {
+            break JLoop
+        }
+        fmt.Println(i)
+    }
+}
+JLoop:
+// ...
+```
+
+### for 中的初始语句——开始循环时执行的语句
+
+初始语句是在第一次循环前执行的语句，一般使用初始语句执行变量初始化，如果变量在此处被声明，其作用域将被局限在这个 for 的范围内。
+
+初始语句可以被忽略，但是初始语句之后的分号必须要写，代码如下：
+
+```go
+setp := 2
+for ;step>0; step-- {
+    fmt.Println(setp)
+}
+```
+
+
+### for range
+
+for range 结构是Go语言特有的一种的迭代结构，在许多情况下都非常有用，for range 可以遍历数组、切片、字符串、map 及通道（channel），for range 语法上类似于其它语言中的 foreach 语句，一般形式为：
+
+```go
+for key, val := range some {
+    
+}
+```
+
+需要要注意的是，val 始终为集合中对应索引的值拷贝，因此它一般只具有只读性质，对它所做的任何修改都不会影响到集合中原有的值。
+
+通过 for range 遍历的返回值有一定的规律：
+
+- 数组、切片、字符串返回索引和值。
+- map 返回键和值。
+- 通道（channel）只返回通道内的值。
+
+
+
+#### 作业题
+
+````go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+)
+
+func main() {
+	const rand_val = 31
+	var some_val = rand.Intn(100)
+
+	for {
+		if some_val == rand_val {
+			break
+		} else if some_val > rand_val {
+			fmt.Println("your number is bigger than my point")
+		} else {
+			fmt.Println("your number is smaller than my point")
+		}
+
+		some_val = rand.Intn(100)
+
+	}
+	fmt.Println("congratulation!!! your right!")
+}
+````
+
+
+
+## 函数
+
+Go语言里面拥三种类型的函数：
+
+- 普通的带有名字的函数
+- 匿名函数或者 lambda 函数
+- 方法
+
+### 函数声明
+
+Go在标准库文档中列出了标准库每个包中声明的函数。
+
+使用`func`关键字声明函数
+
+````
+func     Intn      (n int)          (int)
+关键字    函数名   形参（名称 类型） 返回值和类型
+````
+
+**在Go里，大写字母开头的函数、变量或其他标识符都可以被导出，被其他包引用。**
+
+**而小写字母开头的则不能被其他包引用**
+
+形式参数列表描述了函数的参数名以及参数类型，这些参数作为局部变量，其值由参数调用者提供，返回值列表描述了函数返回值的变量名以及类型，如果函数返回一个无名变量或者没有返回值，返回值列表的括号是可以省略的。
+
+每一次函数在调用时都必须按照声明顺序为所有参数提供实参（参数值），在函数调用时，**Go语言没有默认参数值，也没有任何方法可以通过参数名指定形参**，因此形参和返回值的变量名对于函数调用者而言没有意义。
+
+
+
+### 多个参数
+
+```go
+func Unix(sec int64, nsec int64) Time
+```
+
+如果多个参数类型相同，那么该类型只写一次即可
+
+```go
+func Unix(sec, nesci int64) Time
+```
+
+### 多个返回值
+
+多个返回值要用括号括起来。
+
+```go
+func Atoi(s string) (i int, err error)
+```
+
+这里可以将返回值的名称去掉，只保留类型。返回值本身的名称并不重要
+
+```go
+func Atoi(s string) (int,error)
+```
+
+
+
+### 可变参数
+
+类似`Println`可以接收任意数量的参数
+
+```go
+func Println(a...interface{}) (int, error)
+```
+
+`...`表示函数的参数的数量是可变的
+
+参数a的类型为`interface{}`,是一个空接口，意思是所有类型都实现了这个接口。
+
+`...`和`interface{}`一起使用就表示接收任意数量，类型的参数。
+
+练习题
+
+````go
+package main
+
+import (
+	"fmt"
+)
+
+func kelvinToCelsius(k float64) float64 {
+	k -= 273.15
+	return k
+}
+
+func celsiusToFahrenheit(v float64) float64 {
+	return (v * 9.0 / 5.0) + 32.0
+}
+
+func kelvinToFahrenheit(k float64) float64 {
+	return -459.67 + k
+}
+func main() {
+	kelvin := 294.0
+	celsius := kelvinToCelsius(kelvin)
+	fmt.Print(kelvin, "k is ", celsius, "C\n")
+	fmt.Print(kelvinToCelsius(kelvin), "C is ", celsiusToFahrenheit(kelvinToCelsius(kelvin)), "F \n")
+	fmt.Print(kelvin, "k is ", kelvinToFahrenheit(0), "F\n")
+}
+````
+
+
+
+## 方法
+
+与某个类型关联的函数，go中没有类和对象？
+
+### 声明新类型
+
+使用type关键字 声明新类型：
+
+```go
+type celsius float64
+var temperature celsius = 20
+```
+
+celsius 和float64虽然地层是相同的，但是，已经变成两个类型了。所以 也不能同时进行运算。 
+
+### 通过方法为类型添加行为
+
+可以将方法与包中声明的任何类型相关联，但不可以是int、float64等预声明的类型进行关联。
+
+```go
+type celsius float64
+type kelvin float64
+
+func kelvinToCelsius(k kelvin) celsius {
+    return celsius(k - 273.15)
+}
+
+func (k kelvin) celsius() celsius {  // (k kelvin) 就表示celsius这个方法和kelvin这个类型关联， k是类型参数的接收者
+    return celsius(k - 273.15)
+}
+
+```
+
+在方法体中，接受者的行为和其他函数一样
+
+```
+func    (k  kelvin)    celsius()   celsius
+关键字  接收者参数 类型      方法名    返回值和类型
+```
+
+调用方式
+
+`变量.方法`
+
+```go
+type kelvin float64
+var k kelvin = 234.0
+
+c = k.celsius()
+```
+
+
+
+练习题
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+type celsius float64
+type fahrenheit float64
+type kelvin float64
+
+func (k kelvin) kelvinToCelsius() celsius {
+	k -= 273.15
+	return celsius(k)
+}
+
+func (c celsius) celsiusToFahrenheit() fahrenheit {
+	return fahrenheit((c * 9.0 / 5.0) + 32.0)
+}
+
+func (k kelvin) kelvinToFahrenheit() fahrenheit {
+	return fahrenheit(-459.67 + k)
+}
+
+func main() {
+	var k kelvin = 294.0
+	var c celsius = k.kelvinToCelsius()
+	fmt.Print(k, "k is ", c, "C\n")
+	fmt.Print(k.kelvinToCelsius(), "C is ", c.celsiusToFahrenheit(), "F \n")
+	fmt.Print(0, "k is ", kelvin(0).kelvinToFahrenheit(), "F\n")
+}
+```
+
+## 一等函数
+
+在Go里，函数的是头等的，它可以用在整数、字符串或其他类型能用的地方。
+
+- 将函数赋值给变量。
+- 将函数作为参数传递
+- 将函数作为函数的返回值
+
+```go
+package main
+
+import (
+	"math/rand"
+	"fmt"
+)
+
+type kelvin float64
+
+func fakeSensor() kelvin {
+	return kelvin(rand.Intn(151) + 150)
+}
+
+func realSensor() kelvin {
+	return 0
+}
+
+func main() {
+	sensor := fakeSensor // 将函数传给变量
+	fmt.Println(sensor())
+
+	sensor = realSensor
+	fmt.Println(sensor())
+}
+```
+
+
+
+将函数传递 给其他函数
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+type kelvin float64
+
+func measureTemperature(samples int, sensor func() kelvin) { // 注意这里，sensor是变量 kelvin是返回值类型
+	for i := 0; i < samples; i++ {
+		k := sensor()
+		fmt.Printf("%v k\n", k)
+		time.Sleep(time.Second)
+	}
+}
+
+func fakeSensor() kelvin {
+	return kelvin(rand.Intn(151) + 150)
+}
+
+func main() {
+	measureTemperature(3, fakeSensor)
+}
+```
+
+### 声明函数类型
+
+为声明函数类型有助于精简和明确调用者的代码
+
+```go
+type sensor func() kelvin
+/*可以将函数中的参数替换*/
+func measureTemperature(sample int, s func() kelvin)
+
+func measureTemperature(samples int, s sensor)
+```
+
+
+
+### 闭包和匿名函数
+
+匿名函数
+
+格式如下
+
+```
+func(参数列表)(返回值列表){
+   函数体
+}
+```
+
+没有函数名
+
+```go
+var f = func() {
+	fmt.Println("Dress up for the masquerade")
+}
+
+func main() {
+	f()
+    
+    var f2 = func(message string) {
+		fmt.Println(message)
+	}
+
+	f2("something happened")
+}
+```
+
+因为函数数字字面值需要保留外部作用域的变量引用，所以函数字面值都是闭包的。
+
+闭包就是由于匿名函数封闭并包围作用域中的变量而得名的。
+
+```go
+package main
+
+import (
+	"fmt"
+)
+
+type kelvin float64
+type sensor func() kelvin
+
+func realSensor() kelvin {
+	return 0
+}
+
+func calibrate(s sensor, offset kelvin) sensor {
+	return func() kelvin {  // 闭包
+		return s() + offset
+	}
+}
+
+func main() {
+	sensor := calibrate(realSensor, 5)
+	fmt.Println(sensor())
+}
+```
+
+
+
+### 作业题
+
+````go
+package main
+
+import (
+	"fmt"
+	"strings"
+)
+
+const format = "|%-10.1f|%-10.1f|\n"
+const equal_num = 23
+
+func print_equal(num int) {
+	fmt.Println(strings.Repeat("=", num))
+}
+
+func print_title(val1 string, val2 string) {
+	fmt.Printf("|%-10v|%-10v|\n", val1, val2)
+}
+func print_val(val1 float64, val2 float64) {
+	fmt.Printf(format, val1, val2)
+}
+
+func celsiusToFahrenheit(c float64) float64 {
+	return (c * 9.0 / 5.0) + 32.0
+}
+
+func main() {
+
+	print_equal(equal_num)
+	print_title("C", "F")
+	print_equal(equal_num)
+	for count := -40.0; count < 101.0; count += 5.0 {
+		print_val(float64(count), celsiusToFahrenheit(float64(count)))
+	}
+	print_equal(equal_num)
+
+	print_equal(equal_num)
+	print_title("F", "C")
+	print_equal(equal_num)
+	for count := -40.0; count < 101.0; count += 5.0 {
+		print_val(celsiusToFahrenheit(float64(count)), float64(count))
+	}
+	print_equal(equal_num)
+
+}
+````
+
+
 
 
 
@@ -2392,6 +2527,14 @@ var oppertunity location
 oppertunity.lat = 234.0
 oppertunity.long = 123.4
 ````
+
+### struct实例化
+
+```go
+var spirit location
+ins := new(location)  # 创建结构体指针
+ins := &location{}  # 通过取地址实例化
+```
 
 
 
@@ -3440,7 +3583,11 @@ fmt.Printf("%T %v %v\n", v, v, v == nil)  // 这里类型不为nil但是值还�
 
 go中，接口类型的变量只有在类型和值都为nil时才等于nil。即使接口变量的值仍为nil，但只要它的类型不是nil，那么该变量就不等于nil。
 
+
+
 ## 错误处理
+
+go语言没有异常处理机制
 
 go语言允许函数和方法同时返回多个值。按照惯例，函数在返回错误时，最后边的返回值应该用来表示错误。调用函数后，应立即检查是否发生错误。
 
@@ -3459,6 +3606,8 @@ func main() {
 	}
 }
 ```
+
+
 
 ### 如何优雅的处理错误
 
