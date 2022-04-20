@@ -193,6 +193,30 @@ const MAX_POINTS: u32 = 100_000;
 
 ### 数据类型
 
+| 介绍                            | 示例                                                         |
+| ------------------------------- | ------------------------------------------------------------ |
+| 数组, 固定大小的同构序列 [T; N] | [u32; 16]                                                    |
+| 布尔值                          | true, false                                                  |
+| utf-8                           | 'a'  '%'                                                     |
+| 浮点数                          | 0f32  3.1415926                                              |
+| 函数指针                        | fn(&str) -> usize                                            |
+|                                 |                                                              |
+|                                 |                                                              |
+| 分配在堆上的类型T               | let v: Box<i32> = Box::new(1)                                |
+| T要么存在, 要么为None           | Some(42) None                                                |
+| 要么成功Ok(T) 要么失败 Err(E)   | Ok(42) Err(ConnectionError::TooMany)                         |
+| 可变列表, 分配在堆上            | let mut arr = vec!                                           |
+| 字符串                          | let s = String::from("hello");                               |
+| 哈希表                          | let map: HashMap<&str, &str> = HashMap::new();               |
+| 集合                            | let set: HashSet<u32> = HashSet::new();                      |
+| 为T提供内部可变性的智能指针     | let v = RefCell::new(42);<br />let mut borrowed = v.borrow_mut(); |
+| 为T提供引用计数的智能指针       | let v = Rc::new(42)<br />let v1 = Arc::new(42);              |
+|                                 |                                                              |
+
+
+
+
+
 标量类型+复合类型
 
 通常编译器可以推断出类型。但是复杂情况需要自己指定新类。
@@ -1136,7 +1160,7 @@ fn main() {
 
 var() 函数可以接受一个字符串类型参数， 用于查找当前环境变量中是否存在这个名字的环境变量， vars() 函数不携带参数， 可以返回所有的环境变量。  
 
-此前， Rust的main函数只支持无参数、 无返回值类型的声明方式，即main函数的签名固定为： fn main()  -> () 。  
+此前， Rust的main函数只支持无参数、 无返回值类型的声明方式，即main函数的签名固定为:`fn main()  -> ()` 
 
 Rust设计组扩展了main函数的签名，使它变成了一个泛型函数， 这个函数的返回类型可以是任何一个满足Terminationtrait约束的类型， 其中（ ） 、 bool、 Result都是满足这个约束的， 它们都可以作为main函数的返回类型。   
 
@@ -1169,6 +1193,103 @@ fn main() {
 
 ## 第四章 trait
 
+![img](rust学习.assets/41faf5451f7490640e8529b0c7a1627c.jpg)
+
+### 类型系统
+
+类型系统其实就是，对类型进行定义、检查和处理的系统。所以，按对类型的操作阶段不同，就有了不同的划分标准，也对应有不同分类，按定义后类型是否可以隐式转换，可以分为强类型和弱类型. Rust 不同类型间不能自动转换，所以是强类型语言，而 C / C++ / JavaScript 会自动转换，是弱类型语言.
+
+按类型检查的时机，在编译时检查还是运行时检查，可以分为静态类型系统和动态类型系统。对于静态类型系统，还可以进一步分为显式静态和隐式静态，Rust / Java / Swift 等语言都是显式静态语言，而 Haskell 是隐式静态语言. 
+
+在类型系统中，多态是指在使用相同的接口时，不同类型的对象，会采用不同的实现。
+
+- 动态类型系统-- 鸭子类型
+- 静态类型系统-- 参数多态, 特设多态, 子类型多态.
+  - 参数多态: 代码操作的类型是一个满足某些约束的参数, 而非具体的类型.  ---- 泛型
+  - 特设多态: 同一行为有多个不同实现的多态, 比如 1+1  "abc" + "abc". 面向对象中, 指函数重载. -- trait
+  - 子类型多态:  运行时, 子类型可以被当成父类型使用. -- trait object
+
+
+
+**rust不允许进行隐式的类型转换** (就是为了防止隐式的类型转换后, 读取不正确的内存数据)
+
+从内存的角度看，**类型安全**是指代码，只能按照被允许的方法，访问它被授权访问的内存。(指定了类型后,只能用给定的方法访问对应的内存)
+
+`Rust`对内存的访问 进行了 读/写 分开的授权.  所以Rust 下的内存安全更严格：代码只能按照被允许的方法和被允许的权限，访问它被授权访问的内存.  为了做到这么严格的类型安全，`Rust` 中除了 `let / fn / static / const` 这些定义性语句外，都是表达式，而**一切表达式都有类型**，所以可以说在 `Rust` 中，类型无处不在.
+
+在`Rust`中, 对于一个作用域，无论是 `if / else / for` 循环，还是函数，最后一个表达式的返回值就是作用域的返回值，**如果表达式或者函数不返回任何值，那么它返回一个 `unit()`**.`unit` 是只有一个值的类型，它的值和类型都是 `()`
+
+`Rust`中可以进行类型推导, 但是有时候是推导不出来的.
+
+```rust
+fn main() {
+    let numbers = vec![1,2,3,4,5,6,7];
+    let even_numbers = numbers
+    .into_iter()  // iterator 可以返回集合类型,
+    .filter(|n| n % 2 == 0)
+    .collect::<Vec<_>>();  // 但是很多集合类型都实现了iter的trait, collect函数无法明确知道是那种集合类型.所以需要指明
+    
+    println!("{:?}", evnent_bumbers);
+}
+```
+
+上面在collect 之后, 使用`::`强制使用指定的类型T, 称为turbofish.
+
+泛型就是将 重复数据结构中的参数抽取出来, 使用时,根据不同参数,得到具体的类型.
+
+```rust
+pub struct Vec<T, A: Allocator = Global> { // T表示列表中每个数据的类型, A需要满足 Allocator trait
+    buf: RawVec<T, A>,   // Global 是 Rust 默认的全局分配器
+    len: usize,
+}
+```
+
+在`Rust`里, 生命周期标注也是泛型的一部分,一个生命周期`'a`代表**任意的生命周期**, 和T代表**任意类型**是一样的.
+
+下面是一个`Cow(Clone-on-Write)`是Rust中一个重要的数据结构. 它提供一个可能, 要么返回一个借用的数据(只读), 要么返回一个拥有所有权的数据(可写).
+
+```rust
+pub enum Cow<'a, B: ?Sized + 'a> where B: ToOwned,
+{
+    // 借用的数据
+    Borrowed(&'a B),
+    // 拥有的数据
+    Owned(<B as ToOwned>::Owned), //对 B 做了一个强制类型转换，转成 ToOwned trait，然后访问 ToOwned trait 内部的 Owned 类型
+}
+```
+
+对于拥有所有权的数据 B ，第一个约束是生命周期约束. 这里 B 的生命周期是` 'a`，所以 B 需要满足 `'a`，这里和泛型约束一样，也是用 `B: 'a `来表示. 当 Cow 内部的类型 B 生命周期为` 'a` 时，Cow 自己的生命周期也是` 'a`.
+
+在表述泛型参数的约束时，Rust 允许两种方式，一种类似函数参数的类型声明，用 `:`来表明约束，多个约束之间用 + 来表示；另一种是使用 where 子句，在定义的结尾来表明参数的约束。两种方法都可以，且可以共存.也就是上面可以改成这样
+
+```rust
+pub enum Cow<'a, B: ToOwned + ?Sized + 'a>
+```
+
+`?Sized` 是一种特殊的约束写法，`?` 代表可以放松问号之后的约束。由于 `Rust` 默认的泛型参数都需要是 `Sized`，也就是固定大小的类型，所以这里 `?Sized` 代表用可变大小的类型(可以是有固定大小的, 也可以不是)
+
+ToOwned 是一个 trait，它可以把借用的数据克隆出一个拥有所有权的数据.
+
+### 泛型函数
+
+在声明一个函数的时候，我们还可以不指定具体的参数或返回值的类型，而是由泛型参数来代替.
+
+```rust
+fn id<T>(x:T) -> T {  // 泛型函数
+    return x;
+}
+
+fn main() {
+    let int = id(0);
+    let string = id("Tyr");
+    println!("{}, {}", int, string);
+}
+```
+
+`Rust` 会对泛型函数进行单态化处理.也就是在编译时，把所有用到的泛型函数的泛型参数展开，生成若干个函数.
+
+
+
 ### 成员方法
 
 trait中可以定义函数。   
@@ -1182,6 +1303,482 @@ trait Shape {
 所有的trait中都有一个隐藏的类型Self（大写S） ， 代表当前这个实现了此trait的具体类型。 trait中定义的函数， 也可以称作关联函数(associated function).
 
 如果函数的第一参数是 `self`, 这个参数可以称为 `receiver(接收者)`, **有receiver的称为 方法(method), 可以通过变量实例通过小数点调用(和python中的语法类似). 没有receiver的称为静态函数, 可以通过`::`双冒号调用**. 两者没有本质区别.
+
+标准库中有一个`std::io::Write`
+
+```rust
+pub trait Write {
+    fn write(&mut self, buf: &[u8]) -> Result<usize>;
+    fn flush(&mut self) -> Result<()>;
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> Result<usize> { ... }
+    fn is_write_vectored(&self) -> bool { ... }
+    fn write_all(&mut self, buf: &[u8]) -> Result<()> { ... }
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> Result<()> { ... }
+    fn write_fmt(&mut self, fmt: Arguments<'_>) -> Result<()> { ... }
+    fn by_ref(&mut self) -> &mut Self where Self: Sized { ... }
+}
+```
+
+在trait中, 方法可以有缺省的实现, 对于这个 Write trait，你只需要实现 write 和 flush 两个方法其他都有缺省实现.
+
+### Self和self的区别
+
+- `Self` 代表当前的类型，比如 `File` 类型实现了 `Write`，那么实现过程中使用到的 `Self` 就指代 `File`。
+
+- self 在用作方法的第一个参数时，实际上是 `self: Self` 的简写(self == self: Self,  self是Self类型的)，所以 `&self` 是 `self: &Self`, 而 `&mut self`是 `self: &mut Self`。
+
+  ```rust
+  // 相当于
+  fn is_write_vectored(&self) 
+  fn is_write_vectored(self: &Self) 
+  ```
+
+### trait的实现
+
+实现已经存在的trait. 实现了 Write  trait
+
+```rust
+
+use std::fmt;
+use std::io::Write;
+
+struct BufBuilder {
+    buf: Vec<u8>,
+}
+
+impl BufBuilder {
+    pub fn new() -> Self {
+        Self {
+            buf: Vec::with_capacity(1024),
+        }
+    }
+}
+
+// 实现 Debug trait，打印字符串
+impl fmt::Debug for BufBuilder {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", String::from_utf8_lossy(&self.buf))
+    }
+}
+
+impl Write for BufBuilder {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        // 把 buf 添加到 BufBuilder 的尾部
+        self.buf.extend_from_slice(buf);
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        // 由于是在内存中操作，所以不需要 flush
+        Ok(())
+    }
+}
+
+fn main() {
+    let mut buf = BufBuilder::new();
+    buf.write_all(b"Hello world!").unwrap();
+    println!("{:?}", buf);
+}
+```
+
+
+
+#### 使用泛型参数来实现trait
+
+下面是一个通过字符串来解析出数字的代码, 其中使用了`regex`库, 同时使用`str::parse`把一个包含数字的字符串变成数字
+
+```rust
+
+use regex::Regex;
+
+pub trait Parse {  // 定义trait
+    fn parse(s: &str) -> Self;
+}
+
+impl Parse for u8 {  // 为u8 实现trait, 还记得为某个类型实现trait 两者中的一个必须在当前文件中
+    fn parse(s: &str) -> Self {
+        let re: Regex = Regex::new(r"^[0-9]+").unwrap();  // 定义一个正则表达式
+        if let Some(captures) = re.captures(s) {  // 返回的对象第0个位置 是匹配到的整个结果
+            // 取第一个 match，将其捕获的 digits 换成 u8
+            captures
+                .get(0)
+                .map_or(0, |s| s.as_str().parse().unwrap_or(0)) // map_or如果有值则使用函数计算,并将结果返回, 如果没有则返回第一个参数的值
+        } else {
+            0
+        }
+    }
+}
+
+#[test]
+fn parse_should_work() {
+    assert_eq!(u8::parse("123abcd"), 123);
+    assert_eq!(u8::parse("1234abcd"), 0);
+    assert_eq!(u8::parse("abcd"), 0);
+}
+
+fn main() {
+    println!("result: {}", u8::parse("255 hello world"));
+}
+```
+
+实现泛型的支持
+
+```rust
+
+use std::str::FromStr;
+
+use regex::Regex;
+pub trait Parse {
+    fn parse(s: &str) -> Self;
+}
+
+// 我们约束 T 必须同时实现了 FromStr 和 Default
+// 这样在使用的时候我们就可以用这两个 trait 的方法了
+
+//返回一个缺省值，在 Rust 标准库中有 Default trait，绝大多数类型都实现了这个 trait，来为数据结构提供缺省值, 所以要实现了这个trait才行
+// 要求 FromStr 是因为, 结果必须能够被str::parse解析
+impl<T> Parse for T
+where
+    T: FromStr + Default,
+{
+    fn parse(s: &str) -> Self {
+        let re: Regex = Regex::new(r"^[0-9]+(\.[0-9]+)?").unwrap();
+        // 生成一个创建缺省值的闭包，这里主要是为了简化后续代码
+        // Default::default() 返回的类型根据上下文能推导出来，是 Self
+        // 而我们约定了 Self，也就是 T 需要实现 Default trait
+        let d = || Default::default();
+        if let Some(captures) = re.captures(s) {
+            captures
+                .get(0)
+                .map_or(d(), |s| s.as_str().parse().unwrap_or(d()))
+        } else {
+            d()
+        }
+    }
+}
+
+#[test]
+fn parse_should_work() {
+    assert_eq!(u32::parse("123abcd"), 123);
+    assert_eq!(u32::parse("123.45abcd"), 0);
+    assert_eq!(f64::parse("123.45abcd"), 123.45);
+    assert_eq!(f64::parse("abcd"), 0f64);
+}
+
+fn main() {
+    println!("result: {}", u8::parse("255 hello world"));
+}
+```
+
+当解析错误时返回缺省值 是不是不合理, 应该返回错误才对, 下来我们将返回错误信息.  但是要返回错误的信息, 在trait定义时不能确定, 不同的实现者可以有不同的类型, 所以最好留给实现者来实现.那要怎么实现呢?
+
+使用关联类型,
+
+```rust
+pub trait Parse {
+    type Error;   // 启用别名的话是 type Error = String
+    fn parse(s: &str) -> Result<Self, Self::Error>;
+}
+```
+
+```rust
+use std::str::FromStr;
+
+use regex::Regex;
+pub trait Parse {
+    type Error;
+    fn parse(s: &str) -> Result<Self, Self::Error>
+    where
+        Self: Sized;
+}
+
+impl<T> Parse for T
+where
+    T: FromStr + Default,
+{
+    // 定义关联类型 Error 为 String
+    type Error = String;
+    fn parse(s: &str) -> Result<Self, Self::Error> {
+        let re: Regex = Regex::new(r"^[0-9]+(\.[0-9]+)?").unwrap();
+        if let Some(captures) = re.captures(s) {
+            // 当出错时我们返回 Err(String)
+            captures
+                .get(0)
+                .map_or(Err("failed to capture".to_string()), |s| {
+                    s.as_str()
+                        .parse()
+                        .map_err(|_err| "failed to parse captured string".to_string())
+                })
+        } else {
+            Err("failed to parse string".to_string())
+        }
+    }
+}
+
+#[test]
+fn parse_should_work() {
+    assert_eq!(u32::parse("123abcd"), Ok(123));
+    assert_eq!(
+        u32::parse("123.45abcd"),
+        Err("failed to parse captured string".into())
+    );
+    assert_eq!(f64::parse("123.45abcd"), Ok(123.45));
+    assert!(f64::parse("abcd").is_err());
+}
+
+fn main() {
+    println!("result: {:?}", u8::parse("255 hello world"));
+}
+```
+
+### 支持泛型的trait
+
+从+ 符号开始支持, 这显然是一个支持泛型的操作
+
+```rust
+pub trait Add<Rhs = Self> {
+    type Output;
+    #[must_use]
+    fn add(self, rhs:Rhs) -> Self::Output;
+}
+```
+
+定义一个复数相加的函数
+
+```rust
+use std::ops::Add;
+
+#[derive(Debug)]
+struct Complex {
+    real: f64,
+    imagine: f64,
+}
+
+impl Complex {
+    pub fn new(real: f64, imagine: f64) -> Self {
+        Self { real, imagine }
+    }
+}
+
+// 对 Complex 类型的实现
+impl Add for Complex {
+    type   = Self;
+
+    // 注意 add 第一个参数是 self，会移动所有权
+    fn add(self, rhs: Self) -> Self::Output {
+        let real = self.real + rhs.real;
+        let imagine = self.imagine + rhs.imagine;
+        Self::new(real, imagine)
+    }
+}
+
+fn main() {
+    let c1 = Complex::new(1.0, 1f64);
+    let c2 = Complex::new(2 as f64, 3.0);
+    println!("{:?}", c1 + c2);
+    // c1、c2 已经被移动，所以下面这句无法编译
+    // println!("{:?}", c1 + c2);
+}
+```
+
+使用引用避免所有权移动
+
+```rust
+// ...
+// 如果不想移动所有权，可以为 &Complex 实现 add，这样可以做 &c1 + &c2
+impl Add for &Complex {
+    // 注意返回值不应该是 Self 了，因为此时 Self 是 &Complex
+    type Output = Complex;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        let real = self.real + rhs.real;
+        let imagine = self.imagine + rhs.imagine;
+        Complex::new(real, imagine)  // 返回的是一个新的值
+    }
+}
+
+fn main() {
+    let c1 = Complex::new(1.0, 1f64);
+    let c2 = Complex::new(2 as f64, 3.0);
+    println!("{:?}", &c1 + &c2);
+    println!("{:?}", c1 + c2);
+}
+```
+
+### 总结
+
+- 当行为和具体的数据关联时，比如字符串解析时定义的 Parse trait，我们引入了带有关联类型的 trait，把和行为有关的数据类型的定义，进一步延迟到 trait 实现的时候。
+- 对于同一个类型的同一个 trait 行为，可以有不同的实现，比如我们之前大量使用的 From，此时可以用泛型 trait。
+
+特设多态是同一种行为的不同实现。所以通过定义 trait 以及为不同的类型实现这个 trait，我们就已经实现了特设多态。Add trait 就是一个典型的特设多态，同样是加法操作，根据操作数据的不同进行不同的处理。
+
+### 子类多态
+
+如果一个对象 A 是对象 B 的子类，那么 A 的实例可以出现在任何期望 B 的实例的上下文中，比如猫和狗都是动物，如果一个函数的接口要求传入一个动物，那么传入猫和狗都是允许的.Rust 虽然没有父类和子类，但 trait 和实现 trait 的类型之间也是类似的关系，所以，Rust 也可以做子类型多态.
+
+```rust
+struct Cat;
+struct Dog;
+
+trait Animal {
+    fn name(&self) -> &'static str;
+}
+
+impl Animal for Cat {
+    fn name(&self) -> &'static str {
+        "Cat"
+    }
+}
+
+impl Animal for Dog {
+    fn name(&self) -> &'static str {
+        "Dog"
+    }
+}
+
+// fn name<T: Animal>(animal: T) -> &'static str; 也可以这么写
+fn name(animal: impl Animal) -> &'static str {
+    animal.name()
+}
+
+fn main() {
+    let cat = Cat;
+    println!("cat: {}", name(cat));
+}
+```
+
+### Trait Object  属性动态分配
+
+泛型函数会根据具体使用的类型被单态化，编译成多个实例，是静态分派。静态分配效率高, 但是很多时候, **类型可能很难在编译时决定**。比如要撰写一个格式化工具，这个在 IDE 里很常见，我们可以定义一个 Formatter 接口，然后创建一系列实现：
+
+```rust
+pub trait Formatter {
+    fn format(&self, input: &mut String) -> bool;
+}
+
+// 分别实现trait
+struct MarkdownFormatter;
+impl Formatter for MarkdownFormatter {
+    fn format(&self, input: &mut String) -> bool {
+        input.push_str("\nformatted with Markdown formatter");
+        true
+    }
+}
+
+struct RustFormatter;
+impl Formatter for RustFormatter {
+    fn format(&self, input: &mut String) -> bool {
+        input.push_str("\nformatted with Rust formatter");
+        true
+    }
+}
+
+struct HtmlFormatter;
+impl Formatter for HtmlFormatter {
+    fn format(&self, input: &mut String) -> bool {
+        input.push_str("\nformatted with Html formatter");
+        true
+    }
+}
+```
+
+和上面动物的trait相似, 需要实现一个函数,作为具体调用的函数. 但是在调用的时候, 可能要调用多个格式化函数,也可能是一个, 自然我们想到传入一个列表, 然后根据列表中的值进行调用. 但是`Vec<T>` 通常需要同一个类型,
+
+```rust
+pub fn format(input: &mut String, formatters: Vec<???>) {
+    for formatter in formatters {
+        formatter.format(input)
+    }
+}
+```
+
+所以我们要有一种手段，告诉编译器，此处需要并且仅需要任何实现了 Formatter 接口的数据类型。在 Rust 里，这种类型叫 Trait Object，表现为 `&dyn Trait` 或者 `Box<dyn Trait>`。阅读代码时，看到 dyn 就知道后面跟的是一个 trait 了。
+
+```rust
+pub fn format(input: &mut String, formatters: Vec<&*dyn Formatter>) {
+    for formatter in formatters {
+        formatter.format(input)
+    }
+}
+```
+
+这样可以在运行时，构造一个 Formatter 的列表，传递给 format 函数进行文件的格式化，这就是动态分派（dynamic dispatching）.
+
+最终调用方写为
+
+```rust
+fn main() {
+    let mut text = "Hello world!".to_string();
+    let html: &dyn Formatter = &HtmlFormatter;
+    let rust: &dyn Formatter = &RustFormatter;
+    let formatters = vec![html, rust];
+    format(&mut text, formatters);
+    
+    println!("text: {}", text);
+}
+```
+
+### trait object 的实现机理
+
+当需要使用 `Formatter trait` 做动态分派时，可以像如下例子一样，将一个具体类型的引用，赋给 `&Formatter` :
+
+![img](rust学习.assets/4900097edab0yye11233e14ef857be1d.jpg)
+
+`HtmlFormatter` 的引用赋值给 `Formatter` 后，会生成一个 `Trait Object`，在上图中可以看到，`Trait Object` 的底层逻辑就是胖指针。其中，一个指针指向数据本身，另一个则指向虚函数表（vtable）。
+
+
+
+### 标准库中的trait
+
+#### 内存相关:  Clone/Copy/Drop
+
+Clone
+
+```rust
+pub trait Clone {
+    fn clone(&self) -> Self;  // 这里只是只读引用
+    
+    fn clone_from(&mut self, source: &Self) {
+        *self = source.clone()
+    }
+}
+```
+
+`a.clone()` 和 `a.clone_from()` 的区别,  如果 a 已经存在，在 clone 过程中会分配内存，那么用 `a.clone_from(&b)` 可以避免内存分配，提高效率。
+
+如果在你的数据结构里，每一个字段都已经实现了 Clone trait，你可以用 #[derive(Clone)] 为数据结构自动实现`Clone trait`
+
+```rust
+#[derive(Clone, Debug)]  // 实现Clone trait
+struct Developer {
+    name: String,
+    age: u8,
+    lang: Language
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+enum Language {
+    Rust,
+    TypeScript,
+    Elixir,
+    Haskell
+}
+
+fn main() {
+    let dev = Developer {
+        name: "Tyr".to_string(),
+        age: 18,
+        lang: Language::Rust
+    };
+
+    let dev1 = dev.clone();  // 可以直接调用clone
+    println!("dev: {:?}, addr of dev name: {:p}", dev, dev.name.as_str());
+    println!("dev1: {:?}, addr of dev1 name: {:p}", dev1, dev1.name.as_str());
+}
+```
+
+
 
 
 
@@ -2166,7 +2763,7 @@ fn main() {
 
 rust的代码组织包含什么内容：
 
-- 那些细节可以暴露，那些细节是私有的
+- 哪些细节可以暴露，哪些细节是私有的
 - 作用域内哪些名称有效。等等
 
 
@@ -2627,7 +3224,7 @@ byte类型的集合，并且提供一些方法，能将byte解析为文本。
 
 这里要讲的是String 类型：
 
-此类型来自`标准库`而不是核心语言层面。存储在 可以增长、可修改、可拥有。使用utf-8编码。
+此类型来自`标准库`而不是核心语言层面。存储在堆上可以增长、可修改、可拥有。使用utf-8编码。
 
 #### 其他类型的字符串
 
@@ -2726,7 +3323,7 @@ fn add(self, s:&str) -> String{...}
 
 只能把&str添加到String。
 
-解引用强制转换。之所以能够对引用实现字符串切片的功能。????????
+解引用强制转换。之所以能够对引用实现字符串切片的功能。
 
 
 
@@ -3095,7 +3692,7 @@ fn main() {
 
 ```rust
 use std::fs::File;
-use std::io::ErrorKind
+use std::io::ErrorKind;
 
 fn main() {
 	let f = File::open("hello.txt");
@@ -3244,7 +3841,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
 大体原则：
 
-- 在定义一个可能失败的函数时，有先考虑返回Result，
+- 在定义一个可能失败的函数时，优先考虑返回Result，
 - 否则就返回 panic! 
 
 编写示例， 原型代码， 测试   适合使用panic！
@@ -3345,7 +3942,7 @@ fn largest<T>(list: &[T]) -> T {...}
 fn largest<T>(list: &[T]) -> T { // 使用泛型代替函数签名
     let mut largest = list[0];
     for &item in list {
-        if item > largest {
+        if item > largest {  // 这里会报错,这里只是表达我们可以这样实现, 为了消除错误,我们需要指定T实现std::cmp::PartialOrd的Trait, 后面修改
             largest = item;
         }
     }
@@ -3440,7 +4037,7 @@ struct Point<T, U> {
 }
 
 impl<T, U> Point<T, U> {
-    // 此处的方法的泛型和struct中泛型类型就不同。 但是我认为这里主要是以为输入了一个新的不同类型的对象，并且要使用新对象里的泛型，所以才使用新的泛型。
+    // 此处的方法的泛型和struct中泛型类型就不同。 但是我认为这里主要是因为输入了一个新的不同类型的对象，并且要使用新对象里的泛型，所以才使用新的泛型。
     fn mixup<V, W>(self, other: Point<V, W>) -> Point<T, W> {
         Point {
             x: self.x,
@@ -3693,7 +4290,7 @@ impl <T: Display + PartialOrd> Pair<T> { // 当类型实现了 Display + Partial
         if self.x >= self.y {
             println!("The largest member is x= {}", self.x);
         } else {
-            println!("The largest member is y= {}", slef.y);
+            println!("The largest member is y= {}", self.y);
         }
     }
 }
@@ -3732,6 +4329,45 @@ fn main() {
 
 x的作用域范围是比r要小的, 在出了x作用域范围后, x就失效了, r对他的引用也失效了,,所以println!的打印语句会报错.
 
+#### 借用方式
+
+对于&mut型指针，**注意**不要混淆它与变量绑定之间的语法。如果mut修饰的是变量名，那么它代表这个变量可以被重新绑定； 如果mut修饰的是“借用指针&”，那么它代表的是被指向的对象可以被修改。
+
+```rust
+fn main() {
+    let mut var = 0_i32;
+    {
+        let p1 = &mut var; // p1 本身不能被重新绑定, 但是可以通过p1改变var的值
+        *p1 = 1;
+    }
+    {
+        let temp = 2_i32;
+        let mut p2 = &var;  // 不能通过p2改变var的值,但是能改变p2的指向
+        p2 = &temp;
+    }
+    {
+        let mut temp = 3_i32;
+        let mut p3 = &mut var;  // 可以改变var的值,也嫩改变 p3的指向
+        *p3 = 3;
+        p3 = &mut temp;
+    }
+}
+```
+
+#### 借用规则
+
+借用指针只能临时地拥有对这个变量读或写的权限，没有义务管理这个变量的生命周期,因此，借用指针的生命周期绝对不能大于它所引用的原来变量的生命周期，否则就是悬空指针，会导致内存不安全. 这和之前的所有权的规则一样.
+
+- 借用指针不能比它指向的变量存在的时间更长
+
+- &mut型借用只能指向本身具有mut修饰的变量，对于只读变量， 不可以有&mut型借用
+
+- &mut型借用指针存在的时候，被借用的变量本身会处于“冻结”状态
+
+- 如果只有&型借用指针，那么能同时存在多个；如果存在&mut型借用指针，那么只能存在一个；如果同时有其他的&或者&mut型借用指针存在，那么会出现编译错误
+
+  
+
 ### rust中的借用检查器
 
 rust编译器的借用检查器用来  比较**作用域**来判断 所有的**借用**是否合法
@@ -3760,11 +4396,23 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
 
 ### 生命周期标注语法
 
+当**生命周期跨函数**的时候，就需要一种特殊的生命周期标记符号了.
+
+
+
+生命周期符号**使用单引号开头**，后面跟一个**合法的名字**。生命周期标记和泛型类型参数是一样的，都需要先声明后使用.
+
+
+
 生命周期的标注**不会改变**引用的**生命周期长度**.
 
 当**指定了**泛型生命周期参数, 函数可以接收带有**任何**生命周期的引用
 
 生命周期的标注: 描述了多个引用的生命周期间的关系,但**不影响生命周期**
+
+
+
+有生命周期标注没问题, 就是标注了声明周期后, 会按照声明周期标注结束一个变量吗?  只能在函数内标注声明周期吗?
 
 
 
